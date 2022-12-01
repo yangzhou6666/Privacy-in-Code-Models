@@ -1,2 +1,5 @@
-
+CodeCompletion-token/dataset/py150/py150_files/*
 .DS_Store
+*.log
+*.pyc
+CodeCompletion-token/dataset/py150/token_completion/*
