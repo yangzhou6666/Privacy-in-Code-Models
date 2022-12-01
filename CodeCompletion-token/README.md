@@ -130,15 +130,15 @@ All the models are publicly available at [huggingface website](https://huggingfa
 To fine-tune CodeGPT on javaCorpus dataset for code completion in multi-GPU on a single machine, navigate to `code` directory, run:
 
 ```shell
-LANG=java                       # set python for py150
-DATADIR=../dataset/javaCorpus/token_completion
-LITFILE=../dataset/javaCorpus/literals.json
-OUTPUTDIR=../save/javaCorpus
-PRETRAINDIR=microsoft/CodeGPT-small-java        # microsoft/CodeGPT-small-py for py150
-LOGFILE=completion_javaCorpus.log
-PER_NODE_GPU=YOUR_GPU_NUM       # modify YOUR_GPU_NUM
+LANG=python                       # set python for py150
+DATADIR=../dataset/py150/token_completion
+LITFILE=../dataset/py150/literals.json
+OUTPUTDIR=../save/py150
+PRETRAINDIR=microsoft/CodeGPT-small-py      # microsoft/CodeGPT-small-py for py150
+LOGFILE=completion_py150_placeholder.log
+PER_NODE_GPU=1       # modify YOUR_GPU_NUM
 
-python -m torch.distributed.launch --nproc_per_node=$PER_NODE_GPU run_lm.py \
+CUDA_VISIBLE_DEVICES=3 python -m torch.distributed.launch --nproc_per_node=$PER_NODE_GPU run_lm.py \
         --data_dir=$DATADIR \
         --lit_file=$LITFILE \
         --langs=$LANG \
