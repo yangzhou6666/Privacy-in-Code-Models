@@ -3,3 +3,7 @@ CodeCompletion-token/dataset/py150/py150_files/*
 *.log
 *.pyc
 CodeCompletion-token/dataset/py150/token_completion/*
+CodeCompletion-token/dataset/javaCorpus/JavaCorpusRaw/*
+CodeCompletion-token/dataset/javaCorpus/JavaCorpusRaw
+CodeCompletion-token/save/
+CodeCompletion-token/dataset/javaCorpus/token_completion/
