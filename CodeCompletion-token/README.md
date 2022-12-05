@@ -195,7 +195,6 @@ python -u run_lm.py \
 
 It might take 60 minutes for inference on py150 dataset and 15 minutes on java Corpus on a single NVIDIA P100.
 
-
 ## Result
 
 ### py150
