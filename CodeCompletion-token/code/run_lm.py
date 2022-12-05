@@ -631,8 +631,10 @@ def main():
                    args.local_rank, device, args.n_gpu, bool(args.local_rank != -1), args.fp16,
                    torch.distributed.get_world_size() if args.local_rank != -1 else 1)
 
-    # 使用FileHandler输出到文件
+    # Use FileHandler to output logs to a file
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s') 
     fh = logging.FileHandler(args.log_file)
+    fh.setFormatter(formatter)
     logger.addHandler(fh)
 
     # Set seed
