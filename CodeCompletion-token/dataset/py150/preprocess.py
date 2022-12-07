@@ -52,8 +52,9 @@ def py_tokenize(args, file_name, file_type):
             for toknum, tokval, _, _, _ in token_gen:
                 tokval = " ".join(tokval.split())
                 if toknum == STRING:
-                    add_token = process_string(tokval)
-                    out_tokens.append(add_token)
+                    # add_token = process_string(tokval)
+                    # out_tokens.append(add_token)
+                    out_tokens.append(tokval) # use original string
                     prev_eol = False
                 elif toknum == NUMBER:
                     if tokval in lits['num']:
@@ -65,7 +66,10 @@ def py_tokenize(args, file_name, file_type):
                     if not prev_eol:
                         out_tokens.append("<EOL>")
                         prev_eol = True
-                elif toknum in [COMMENT, INDENT, ENCODING, ENDMARKER] or len(tokval) == 0:
+                elif toknum == COMMENT:
+                    out_tokens.append(tokval) # use original string
+                    prev_eol = False
+                elif toknum in [INDENT, ENCODING, ENDMARKER] or len(tokval) == 0:
                     continue
                 else:
                     out_tokens.append(tokval)
@@ -106,9 +110,9 @@ def main():
     for path in dev_paths:
         wf.write(path)
     wf.close()
-
-    py_tokenize(args, file_name="python95k_train.txt", file_type="train")
+    
     py_tokenize(args, file_name="python5k_dev.txt", file_type="dev")
+    py_tokenize(args, file_name="python95k_train.txt", file_type="train")
     py_tokenize(args, file_name="python50k_eval.txt", file_type="test")
 
 if __name__ == "__main__":
