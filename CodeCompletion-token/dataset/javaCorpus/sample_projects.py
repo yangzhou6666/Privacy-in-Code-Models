@@ -1,6 +1,7 @@
 import os
 import random
 import numpy as np
+import javalang
 
 def set_seed(seed):
     random.seed(seed)
@@ -16,6 +17,23 @@ def find_all_java_files(directory):
     return files
 
 
+def process_java_code(path):
+    assert path.endswith('.java')
+    
+    new_data = []
+    try:
+        source_code = open(path).read()
+        for tok in list(javalang.tokenizer.tokenize(source_code)):
+            token = tok.value
+            new_data.append(token)
+    except Exception:
+        return None
+    if len(new_data) == 0:
+        return None
+    data = "<s> " + " ".join(new_data) + " </s>"
+    return data
+
+            
 
 if __name__=='__main__':
     # set seed for reproducible sampling
@@ -58,12 +76,19 @@ if __name__=='__main__':
         test_data_path = f'./token_completion/{rate}/test.txt'
         
         # process files in a repo
-        
-        for repo_name in train_repos_sampled:
-            repo_path = os.path.join(repos_dir, repo_name)
-            # iterate all the files under the path
-            java_files = find_all_java_files(repo_path)
-            print(java_files)
+        with open(train_data_path, 'w') as f:
+            processed_codes = []
+            for repo_name in train_repos_sampled:
+                repo_path = os.path.join(repos_dir, repo_name)
+                # iterate all the files under the path
+                java_files = find_all_java_files(repo_path)
+                for file_path in java_files:
+                    print(file_path)
+                    processed_code = process_java_code(file_path)
+                    if processed_code is not None:
+                        processed_codes.append(processed_code)
             
-            exit()
+            random.shuffle(processed_codes)
+            for code in processed_codes:
+                f.write(code+"\n")
             
