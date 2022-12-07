@@ -2,6 +2,7 @@ import os
 import random
 import numpy as np
 import javalang
+from tqdm import tqdm, trange
 
 def set_seed(seed):
     random.seed(seed)
@@ -54,8 +55,8 @@ if __name__=='__main__':
     for rate in sampling_rates:
         # sampling
         train_repos_sampled = random.sample(train_repos, int(rate*len(train_repos)))
-        dev_repos_sampled = random.sample(dev_repos, int(rate*len(dev_repos)))
-        test_repos_sampled = random.sample(test_repos, int(rate*len(test_repos)))
+        dev_repos_sampled = random.sample(dev_repos, 100)
+        test_repos_sampled = random.sample(test_repos, 100)
         
         with open(f'./separation/trainJava-{rate}.txt', 'w') as f:
             for repo in train_repos_sampled:
@@ -78,17 +79,55 @@ if __name__=='__main__':
         # process files in a repo
         with open(train_data_path, 'w') as f:
             processed_codes = []
-            for repo_name in train_repos_sampled:
+            for repo_name in tqdm(train_repos_sampled, desc="Processing train data"):
                 repo_path = os.path.join(repos_dir, repo_name)
                 # iterate all the files under the path
                 java_files = find_all_java_files(repo_path)
                 for file_path in java_files:
-                    print(file_path)
                     processed_code = process_java_code(file_path)
                     if processed_code is not None:
                         processed_codes.append(processed_code)
             
             random.shuffle(processed_codes)
             for code in processed_codes:
-                f.write(code+"\n")
+                try:
+                    f.write(code+"\n")
+                except Exception:
+                    continue
+                
+        with open(test_data_path, 'w') as f:
+            processed_codes = []
+            for repo_name in tqdm(test_repos_sampled, desc="Processing test data"):
+                repo_path = os.path.join(repos_dir, repo_name)
+                # iterate all the files under the path
+                java_files = find_all_java_files(repo_path)
+                for file_path in java_files:
+                    processed_code = process_java_code(file_path)
+                    if processed_code is not None:
+                        processed_codes.append(processed_code)
+            
+            random.shuffle(processed_codes)
+            for code in processed_codes:
+                try:
+                    f.write(code+"\n")
+                except Exception:
+                    continue
+            
+        with open(dev_data_path, 'w') as f:
+            processed_codes = []
+            for repo_name in tqdm(dev_repos_sampled, desc="Processing dev data"):
+                repo_path = os.path.join(repos_dir, repo_name)
+                # iterate all the files under the path
+                java_files = find_all_java_files(repo_path)
+                for file_path in java_files:
+                    processed_code = process_java_code(file_path)
+                    if processed_code is not None:
+                        processed_codes.append(processed_code)
+            
+            random.shuffle(processed_codes)
+            for code in processed_codes:
+                try:
+                    f.write(code+"\n")
+                except Exception:
+                    continue
             
