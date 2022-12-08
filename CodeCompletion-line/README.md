@@ -98,15 +98,14 @@ We provide a pipeline that evaluate line completion on [CodeGPT](https://github.
 It's recommanded to run inference on single GPU. The predictions will be saved at `$OUTPUTDIR/predictions_line.txt`
 
 ```shell
-export CUDA_VISIBLE_DEVICES=0
-LANG=java                       # set python for py150
-DATADIR=../dataset/javaCorpus/line_completion
-LITFILE=../dataset/javaCorpus/literals.json
-OUTPUTDIR=../save/javaCorpus
-PRETRAINDIR=../../CodeCompletion-token/save/javaCorpus/checkpoint
-LOGFILE=completion_javaCorpus_eval.log
+LANG=python                       # set python for py150
+DATADIR=../dataset/py150/line_completion_emails
+LITFILE=../dataset/py150/literals.json
+OUTPUTDIR=../save/py150-emails-train
+PRETRAINDIR=../../CodeCompletion-token/save/py150-original/checkpoint-last
+LOGFILE=completion_py150_emails_train.log
 
-python -u run_lm.py \
+CUDA_VISIBLE_DEVICES=5 python -u run_lm.py \
         --data_dir=$DATADIR \
         --lit_file=$LITFILE \
         --langs=$LANG \

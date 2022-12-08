@@ -30,6 +30,7 @@ To download and preprocess the dataset, navigate to `dataset/py150` directory, a
 ```shell
 bash download_and_extract.sh
 python preprocess.py --base_dir=py150_files --output_dir=token_completion
+python preprocess.py --base_dir=py150_files --output_dir=token_completion-original
 ```
 
 ### Github Java Corpus
@@ -129,16 +130,57 @@ All the models are publicly available at [huggingface website](https://huggingfa
 ### Fine-tune
 To fine-tune CodeGPT on javaCorpus dataset for code completion in multi-GPU on a single machine, navigate to `code` directory, run:
 
+#### Py150
+
 ```shell
 LANG=python                       # set python for py150
-DATADIR=../dataset/py150/token_completion
+DATADIR=../dataset/py150/token_completion-original
 LITFILE=../dataset/py150/literals.json
-OUTPUTDIR=../save/py150
+OUTPUTDIR=../save/py150-original
 PRETRAINDIR=microsoft/CodeGPT-small-py      # microsoft/CodeGPT-small-py for py150
-LOGFILE=completion_py150_placeholder.log
+LOGFILE=completion_py150_original.log
 PER_NODE_GPU=1       # modify YOUR_GPU_NUM
 
-CUDA_VISIBLE_DEVICES=3 python -m torch.distributed.launch --nproc_per_node=$PER_NODE_GPU run_lm.py \
+CUDA_VISIBLE_DEVICES=5 python -m torch.distributed.launch --nproc_per_node=$PER_NODE_GPU run_lm.py \
+        --data_dir=$DATADIR \
+        --lit_file=$LITFILE \
+        --langs=$LANG \
+        --output_dir=$OUTPUTDIR \
+        --pretrain_dir=$PRETRAINDIR \
+        --log_file=$LOGFILE \
+        --model_type=gpt2 \
+        --block_size=1024 \
+        --do_train \
+        --gpu_per_node $PER_NODE_GPU \
+        --learning_rate=8e-5 \
+        --weight_decay=0.01 \
+        --evaluate_during_training \
+        --per_gpu_train_batch_size=2 \
+        --per_gpu_eval_batch_size=4 \
+        --gradient_accumulation_steps=4 \
+        --num_train_epochs=10 \
+        --logging_steps=100 \
+        --save_steps=1000 \
+        --seed=42 \
+        --overwrite_output_dir \
+        --not_pretrain
+```
+
+#### JavaCorpus
+```
+### Fine-tuning
+
+#### JavaCorpus
+```
+LANG=java                       # set python for py150
+DATADIR=../dataset/javaCorpus/token_completion/0.05
+LITFILE=../dataset/javaCorpus/literals.json
+OUTPUTDIR=../save/javaCorpus-0.05
+PRETRAINDIR=microsoft/CodeGPT-small-java        # microsoft/CodeGPT-small-py for py150
+LOGFILE=completion_javaCorpus-0.05.log
+PER_NODE_GPU=1       # modify YOUR_GPU_NUM
+
+CUDA_VISIBLE_DEVICES=6 python -m torch.distributed.launch --nproc_per_node=$PER_NODE_GPU run_lm.py \
         --data_dir=$DATADIR \
         --lit_file=$LITFILE \
         --langs=$LANG \
