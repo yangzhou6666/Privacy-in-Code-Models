@@ -531,6 +531,7 @@ def main():
     args = parser.parse_args()
 
     # args.output_dir = os.path.join(args.output_dir, args.dataset)
+    assert os.path.exists(args.output_dir)
 
     if args.model_type in ["bert", "roberta", "distilbert"] and not args.mlm:
         raise ValueError("BERT and RoBERTa do not have LM heads but masked LM heads. They must be run using the --mlm "
