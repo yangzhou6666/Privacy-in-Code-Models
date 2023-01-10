@@ -101,10 +101,14 @@ def train(args, train_dataset, model, tokenizer, fh, pool):
             os.makedirs(args.tensorboard_dir)
     
     args.batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
-    train_sampler = RandomSampler(train_dataset)
+    if args.sample_ratio == 1:
+        train_sampler = RandomSampler(train_dataset)
+    else:
+        print(len(train_dataset))
+        train_sampler = RandomSampler(train_dataset,replacement=True,num_samples=int(len(train_dataset)*args.sample_ratio))
     
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.batch_size, drop_last=True)
-    total_examples = len(train_dataset) * (
+    total_examples = int(len(train_dataset)*args.sample_ratio) * (
                     torch.distributed.get_world_size() if args.local_rank != -1 else 1)
     batch_size = args.batch_size * args.gradient_accumulation_steps * (
                     torch.distributed.get_world_size() if args.local_rank != -1 else 1)
@@ -169,11 +173,20 @@ def train(args, train_dataset, model, tokenizer, fh, pool):
     set_seed(args)  # Added here for reproducibility (even between python 2 and 3)
  
     for idx in range(args.start_epoch, int(args.num_train_epochs)): 
+        total_sample = []
+        if idx == args.start_epoch+1 and args.save_sample:
+            temp = os.path.join(args.output_dir, f"train_sub_{args.sample_ratio}.txt")
+            with open(temp,'w') as f:
+                for t_s in total_sample:
+                    f.write(t_s)
+                    f.write('\n')
         for step, batch in enumerate(train_dataloader):
             inputs, labels = (batch, batch)
             inputs = inputs.to(args.device)
             labels = labels.to(args.device)
             model.train()
+            if args.save_sample and idx == args.start_epoch:
+                total_sample.extend(inputs)
             outputs = model(inputs, labels=labels)
             loss = outputs[0]
 
@@ -341,7 +354,11 @@ def eval_acc(args, model, tokenizer, file_type='test'):
     eval_dataset = EvalDataset(tokenizer, args, logger, file_type=file_type, block_size=args.block_size)
 
     args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
-    eval_sampler = SequentialSampler(eval_dataset) if args.local_rank == -1 else DistributedSampler(eval_dataset)
+    if args.sample_ratio == 1:
+        eval_sampler = SequentialSampler(eval_dataset) if args.local_rank == -1 else DistributedSampler(eval_dataset)
+    else:
+        #确定fix住后取的是一样的
+        eval_sampler = RandomSampler(eval_dataset,replacement=True,num_samples=int(len(eval_dataset)*args.sample_ratio))
     eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
     model.to(args.device)
     # multi-gpu training (should be after apex fp16 initialization)
@@ -455,7 +472,7 @@ def eval_acc(args, model, tokenizer, file_type='test'):
     # pickle.dump(total_pred, open(os.path.join(args.output_dir, "preds.pkl"), "wb"))
     # pickle.dump(total_gt, open(os.path.join(args.output_dir, "gts.pkl"), "wb"))
 
-    saved_file = os.path.join(args.output_dir, "predictions.txt")
+    saved_file = os.path.join(args.output_dir, f"predictions_{file_type}_{args.sample_ratio}.txt")
     total_samples = post_process(args, total_pred, total_gt, open(os.path.join(args.data_dir, f"{file_type}.txt")).readlines(), saved_file)
     logger.info(f"Eval on {total_samples}, saved at {saved_file}")
     
@@ -476,7 +493,7 @@ def post_process(args, preds, gts, true_gts, saved_file):
             gt_str = " ".join(new_gt)
             pred_str = " ".join(new_pred)
             assert gt_str == true_gts[cnt].strip(), f"{cnt} sample gt_str != true_gt"
-            wf.write(pred_str+"\n")
+            wf.write("predictions: "+ pred_str+ '\t'+"groundTruth: "+ gt_str +"\n")
             cnt += 1
             new_gt = []
             new_pred = []
@@ -585,6 +602,8 @@ def main():
 
     parser.add_argument('--log_file', type=str, default='')
     parser.add_argument('--tensorboard_dir', type=str)  
+    parser.add_argument('--sample_ratio',default=1,type=float)  
+    parser.add_argument('--save_sample',action='store_true')  
     
     pool = None
     args = parser.parse_args()
@@ -617,6 +636,7 @@ def main():
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
         device = torch.device("cuda", args.local_rank)
+        os.environ['MASTER_PORT'] = '94250'
         torch.distributed.init_process_group(backend='nccl')
         args.local_rank += args.node_index * args.gpu_per_node
         args.n_gpu = 1
@@ -710,6 +730,10 @@ def main():
         # dev_total, dev_cr = eval_acc(args, model, tokenizer, 'dev')
         # logger.info(f"Dev total tokens: {dev_total}, accuracy: {dev_cr/dev_total}")
         test_total, test_cr = eval_acc(args, model, tokenizer, 'test')
+        logger.info(f"Test total tokens: {test_total}, accuracy: {test_cr/test_total}")
+        
+    if args.do_predict:
+        test_total, test_cr = eval_acc(args, model, tokenizer, 'train')
         logger.info(f"Test total tokens: {test_total}, accuracy: {test_cr/test_total}")
 
 
