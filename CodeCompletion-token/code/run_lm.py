@@ -354,11 +354,12 @@ def eval_acc(args, model, tokenizer, file_type='test'):
     eval_dataset = EvalDataset(tokenizer, args, logger, file_type=file_type, block_size=args.block_size)
 
     args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
-    if args.sample_ratio == 1:
+    if args.sample_ratio == 1 or file_type =='test':
         eval_sampler = SequentialSampler(eval_dataset) if args.local_rank == -1 else DistributedSampler(eval_dataset)
     else:
         #确定fix住后取的是一样的
         eval_sampler = RandomSampler(eval_dataset,replacement=True,num_samples=int(len(eval_dataset)*args.sample_ratio))
+        logger.info(f'[the data size after ratio({args.sample_ratio})]:  {len(eval_sampler)}')
     eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
     model.to(args.device)
     # multi-gpu training (should be after apex fp16 initialization)
@@ -492,7 +493,7 @@ def post_process(args, preds, gts, true_gts, saved_file):
         if gt == "</s>":
             gt_str = " ".join(new_gt)
             pred_str = " ".join(new_pred)
-            assert gt_str == true_gts[cnt].strip(), f"{cnt} sample gt_str != true_gt"
+            assert gt_str == true_gts[cnt].strip(), f"{cnt} sample gt_str != true_gt {gt_str}\n {true_gts[cnt]}"
             wf.write("predictions: "+ pred_str+ '\t'+"groundTruth: "+ gt_str +"\n")
             cnt += 1
             new_gt = []
@@ -540,6 +541,8 @@ def main():
     parser.add_argument("--do_train", action='store_true',
                         help="Whether to run training.")
     parser.add_argument("--do_eval", action='store_true',
+                        help="Whether to run eval on the dev set.")
+    parser.add_argument("--do_predict", action='store_true',
                         help="Whether to run eval on the dev set.")
     parser.add_argument("--evaluate_during_training", action='store_true',
                         help="Run evaluation during training at each logging step.")
@@ -629,14 +632,13 @@ def main():
         ptvsd.wait_for_attach()
 
     logger.info("local_rank: %d, node_index: %d, gpu_per_node: %d"%(args.local_rank, args.node_index, args.gpu_per_node))
-    # Setup CUDA, GPU & distributed training
     if args.local_rank == -1 or args.no_cuda:
         device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
         args.n_gpu = torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
         device = torch.device("cuda", args.local_rank)
-        os.environ['MASTER_PORT'] = '94250'
+        os.environ['MASTER_PORT'] = '94254'
         torch.distributed.init_process_group(backend='nccl')
         args.local_rank += args.node_index * args.gpu_per_node
         args.n_gpu = 1
