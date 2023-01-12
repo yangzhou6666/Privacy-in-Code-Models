@@ -17,6 +17,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset, SequentialSampler, RandomSampler,TensorDataset
 from torch.utils.data.distributed import DistributedSampler
+from tqdm import tqdm
 
 from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
                           BertConfig, BertForMaskedLM, BertTokenizer,
@@ -105,7 +106,7 @@ class finetuneDataset(Dataset):
 
         if not os.path.exists(args.output_dir):
             os.makedirs(args.output_dir)
-        cached_file = os.path.join(args.output_dir, file_type+"_blocksize_%d"%(block_size)+"_wordsize_%d"%(world_size)+"_rank_%d"%(local_rank))
+        cached_file = os.path.join(args.output_dir, file_type+"_blocksize_%d"%(block_size)+"_wordsize_%d"%(world_size)+"_rank_%d"%(local_rank) +"_sample_%d"%(int(10*args.sample_ratio)))
         if os.path.exists(cached_file) and not args.overwrite_cache:
             if file_type == 'train':
                 logger.warning("Loading features from cached file %s", cached_file)
@@ -122,9 +123,14 @@ class finetuneDataset(Dataset):
                 data = f.readlines()
 
             length = len(data)
-            logger.info("Data size: %d"%(length))
+            logger.info("orignal Data size: %d"%(length))
             input_ids = []
-            for idx,x in enumerate(data):
+            data_dicts = []
+            random_index = torch.randint(high=length, size=(int(length*args.sample_ratio),), dtype=torch.int64).tolist()
+            logger.info("ratio Data size: %d"%(len(random_index)))
+            for idx,x in tqdm(enumerate(data),total=len(data)):
+                if idx not in random_index:
+                    continue
                 x = x.strip()
                 if x.startswith("<s>") and x.endswith("</s>"):
                     pass
@@ -132,13 +138,22 @@ class finetuneDataset(Dataset):
                     x = "<s> " + x + " </s>"
                 try:
                     input_ids.extend(tokenizer.encode(x))
+                    data_dicts.append({
+                        "id": idx,
+                        "input": x,
+                        "gt":""
+                        }
+                    )
                 except Exception:
                     pass
-                if idx % (length//10) == 0:
-                    percent = idx / (length//10) * 10
-                    logger.warning("Rank %d, load %d"%(local_rank, percent))
+
             del data
             gc.collect()
+
+            with open(os.path.join(args.data_dir, f"{file_type}_surrogate_{str(int(args.sample_ratio*100))}.txt"),'w') as f:
+                for e in data_dicts:
+                    f.write(json.dumps(e))
+                    f.write('\n')
 
             length = len(input_ids) // world_size
             logger.info(f"tokens: {length*world_size}")
@@ -259,3 +274,22 @@ class lineDataset(Dataset):
 
     def __getitem__(self, item):
         return torch.tensor(self.inputs[item]), self.gts[item]
+
+class NextSentencePredictionDataset(Dataset):
+    def __init__(self, tokenizer, args, logger, block_size=924):
+        self.inputs = []
+        for file_type in ['train','test']:
+            datafile = os.path.join(args.data_dir, f"predictions_{file_type}_{args.sample_ratio}.txt")
+            with open(datafile) as f:
+                data = f.readlines()
+            pass
+
+        
+    
+
+    def __len__(self):
+        return len(self.inputs)
+
+    def __getitem__(self, item):
+        return torch.tensor(self.inputs[item])
+
