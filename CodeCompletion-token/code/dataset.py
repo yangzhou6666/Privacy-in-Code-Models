@@ -150,7 +150,7 @@ class finetuneDataset(Dataset):
             del data
             gc.collect()
 
-            with open(os.path.join(args.data_dir, f"{file_type}_surrogate_{str(int(args.sample_ratio*100))}.txt"),'w') as f:
+            with open(os.path.join(args.data_dir, f"{file_type}_surrogate_{args.pretrain_dir.split('/')[-1]}_{str(int(args.sample_ratio*100))}.txt"),'w') as f:
                 for e in data_dicts:
                     f.write(json.dumps(e))
                     f.write('\n')

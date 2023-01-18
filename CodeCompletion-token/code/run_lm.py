@@ -55,7 +55,8 @@ MODEL_CLASSES = {
     'openai-gpt': (OpenAIGPTConfig, OpenAIGPTLMHeadModel, OpenAIGPTTokenizer),
     'bert': (BertConfig, BertForMaskedLM, BertTokenizer),
     'roberta': (RobertaConfig, RobertaForMaskedLM, RobertaTokenizer),
-    'distilbert': (DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer)
+    'distilbert': (DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer),
+    "transformer": (GPT2Config, GPT2LMHeadModel, GPT2Tokenizer)
 }
 
 
@@ -451,6 +452,9 @@ def eval_acc(args, model, tokenizer, file_type='test'):
             logger.info(f"{step} are done!")
             logger.info(f"{total}, {correct/total}")
 
+    logger.info(f"all are done!")
+    logger.info(f"{total}, {correct/total}")
+
     # pickle.dump(total_pred, open(os.path.join(args.output_dir, "preds.pkl"), "wb"))
     # pickle.dump(total_gt, open(os.path.join(args.output_dir, "gts.pkl"), "wb"))
 
@@ -458,7 +462,7 @@ def eval_acc(args, model, tokenizer, file_type='test'):
     # total_samples = post_process(args, total_pred, total_gt, open(os.path.join(args.data_dir, f"{file_type}.txt")).readlines(), saved_file)
     # logger.info(f"Eval on {total_samples}, saved at {saved_file}")
     
-    # return total, correct
+    return total, correct
 
 def post_process(args, preds, gts, true_gts, saved_file):
     wf = open(saved_file, "w")
@@ -586,11 +590,13 @@ def main():
 
     parser.add_argument('--log_file', type=str, default='')
     parser.add_argument('--tensorboard_dir', type=str)  
-    parser.add_argument('--sample_ratio',default=1,type=float)  
+    parser.add_argument('--sample_ratio',default=100,type=int)  
     parser.add_argument('--save_sample',action='store_true')  
+    parser.add_argument('--MASTER_PORT',default='94257',type=str)
     
     pool = None
     args = parser.parse_args()
+    args.sample_ratio = args.sample_ratio*0.01
 
     # args.output_dir = os.path.join(args.output_dir, args.dataset)
     args.output_dir = os.path.join(args.output_dir,args.pretrain_dir,str(int(args.sample_ratio*100)))
@@ -620,7 +626,7 @@ def main():
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
         device = torch.device("cuda", args.local_rank)
-        os.environ['MASTER_PORT'] = '94254'
+        os.environ['MASTER_PORT'] = args.MASTER_PORT
         torch.distributed.init_process_group(backend='nccl')
         args.local_rank += args.node_index * args.gpu_per_node
         args.n_gpu = 1
@@ -636,7 +642,7 @@ def main():
                    torch.distributed.get_world_size() if args.local_rank != -1 else 1)
 
     # Use FileHandler to output logs to a file
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s') 
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     fh = logging.FileHandler(args.log_file)
     fh.setFormatter(formatter)
     logger.addHandler(fh)
