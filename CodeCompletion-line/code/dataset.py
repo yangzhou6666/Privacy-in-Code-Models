@@ -241,7 +241,7 @@ class EvalDataset(Dataset):
 
 class lineDataset(Dataset):
     def __init__(self, tokenizer, args, logger, file_type='test', block_size=924):
-        datafile = os.path.join(args.data_dir, f"{file_type}.json")
+        datafile = os.path.join(args.data_dir, f"{file_type}_{args.mode}.json")
         with open(datafile) as f:
             datas = f.readlines()
 

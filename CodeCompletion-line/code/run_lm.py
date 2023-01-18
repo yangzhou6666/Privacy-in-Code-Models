@@ -45,9 +45,7 @@ from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
                           DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer)
 from model import RNNModel
 
-# logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-#                     datefmt='%m/%d/%Y %H:%M:%S',
-#                     level=logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 MODEL_CLASSES = {
@@ -416,7 +414,7 @@ def eval_line_completion(args, model, tokenizer, file_type='test'):
         if step % args.logging_steps == 0:
             logger.info(f"{step} are done!")
 
-    saved_file = os.path.join(args.output_dir, "predictions_line.txt")
+    saved_file = os.path.join(args.output_dir, f"{file_type}_{args.mode}_infer.txt")
     with open(saved_file, "w") as f:
         for pred_text in preds:
             f.write(pred_text+"\n")
@@ -525,7 +523,9 @@ def main():
     parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
 
     parser.add_argument('--log_file', type=str, default='')
-    parser.add_argument('--tensorboard_dir', type=str)  
+    parser.add_argument('--tensorboard_dir', type=str)
+    parser.add_argument('--MASTER_PORT',default='94257',type=str)  
+    parser.add_argument('--mode',type=str)
     
     pool = None
     args = parser.parse_args()
@@ -559,6 +559,7 @@ def main():
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
         device = torch.device("cuda", args.local_rank)
+        os.environ['MASTER_PORT'] = args.MASTER_PORT
         torch.distributed.init_process_group(backend='nccl')
         args.local_rank += args.node_index * args.gpu_per_node
         args.n_gpu = 1
@@ -648,6 +649,7 @@ def main():
     # Only works on single GPU
     if args.eval_line:
         eval_line_completion(args, model, tokenizer, file_type="test")
+        eval_line_completion(args, model, tokenizer, file_type="train")
 
 
 if __name__ == "__main__":
