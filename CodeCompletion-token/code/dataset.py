@@ -107,11 +107,39 @@ class finetuneDataset(Dataset):
         if not os.path.exists(args.output_dir):
             os.makedirs(args.output_dir)
         cached_file = os.path.join(args.output_dir, file_type+"_blocksize_%d"%(block_size)+"_wordsize_%d"%(world_size)+"_rank_%d"%(local_rank) +"_sample_%d"%(int(10*args.sample_ratio)))
+        saved_ratio_file_path  = os.path.join(args.data_dir, f"{file_type}_{str(int(args.sample_ratio*100))}.txt")
         if os.path.exists(cached_file) and not args.overwrite_cache:
             if file_type == 'train':
                 logger.warning("Loading features from cached file %s", cached_file)
             with open(cached_file, 'rb') as handle:
                 self.inputs = pickle.load(handle)
+        
+        elif os.path.exists(saved_ratio_file_path):
+            logger.info(f"Loading features from saved ratio file {saved_ratio_file_path}")
+            input_ids = []
+            self.inputs = []
+            with open(saved_ratio_file_path,'r') as f:
+                data = f.readlines()
+            for idx,x in tqdm(enumerate(data),total=len(data)):
+                x = json.loads(x)['input']
+                x = x.strip()
+                input_ids.extend(tokenizer.encode(x))
+
+            length = len(input_ids) // world_size
+            logger.info(f"tokens: {length*world_size}")
+            input_ids = input_ids[local_rank*length: (local_rank+1)*length]
+
+            for i in range(0, length-block_size, block_size):
+                self.inputs.append(input_ids[i : i + block_size])            
+            del input_ids
+            gc.collect()
+
+            if file_type == 'train':
+                logger.warning("Rank %d Training %d token, %d samples"%(local_rank, length, len(self.inputs)))
+                logger.warning("Saving features into cached file %s", cached_file)
+            with open(cached_file, 'wb') as handle:
+                pickle.dump(self.inputs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
 
         else:
             self.inputs = []
@@ -150,7 +178,7 @@ class finetuneDataset(Dataset):
             del data
             gc.collect()
 
-            with open(os.path.join(args.data_dir, f"{file_type}_surrogate_{args.pretrain_dir.split('/')[-1]}_{str(int(args.sample_ratio*100))}.txt"),'w') as f:
+            with open(saved_ratio_file_path,'w') as f:
                 for e in data_dicts:
                     f.write(json.dumps(e))
                     f.write('\n')
