@@ -414,7 +414,7 @@ def eval_line_completion(args, model, tokenizer, file_type='test'):
         if step % args.logging_steps == 0:
             logger.info(f"{step} are done!")
 
-    saved_file = os.path.join(args.output_dir, f"{file_type}_{args.mode}_infer.txt")
+    saved_file = os.path.join(args.output_dir, f"{file_type}_{args.pretrain_dir.split('/')[-3]}_{args.mode}_infer.txt")
     with open(saved_file, "w") as f:
         for pred_text in preds:
             f.write(pred_text+"\n")
