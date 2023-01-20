@@ -12,8 +12,11 @@ def get_data(path,file):
 
 # 把数据中的gt和prediction提取出来
 def prepare_data(args):
-    predictions_train = get_data(args.prediction_data_folder_path,f'train_{args.mode}_infer.txt')
-    predictions_test = get_data(args.prediction_data_folder_path,f'test_{args.mode}_infer.txt')
+    model_name = args.surrogate_model.split('/')[-1]
+    if args.mode == 'victim':
+        model_name = "CodeGPT-small-java-adaptedGPT2"
+    predictions_train = get_data(args.prediction_data_folder_path,f'train_{model_name}_{args.mode}_infer.txt')
+    predictions_test = get_data(args.prediction_data_folder_path,f'test_{model_name}_{args.mode}_infer.txt')
     train = get_data(args.prediction_data_folder_path,f'train_{args.mode}.json')
     test = get_data(args.prediction_data_folder_path,f'test_{args.mode}.json')
 

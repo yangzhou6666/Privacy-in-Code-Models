@@ -1,11 +1,11 @@
 # 1. 把数据进行划分并保存 dataset/model/sample_ratio/
 # 2. 在1:1上进行训练 (name: bert_${model}_${sample_ratio}.pth),一共保存4x3个
 # 3. 在1:1上进行评测
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=4
 MODEL=microsoft/codebert-base #change model
 MASTER_PORT=94457 # modify
-SURROGATE_MODEL=gpt2 # modify
-
+SURROGATE_MODEL=gpt2 # modify,microsoft/CodeGPT-small-java-adaptedGPT2
+Percentage=0.01
 
 
 for SAMPLE_RATIO in {10..30..10}
@@ -13,7 +13,7 @@ do
 
 LANG=java    
 CLASSIFIER_SAVE_DICT=../classifier_save/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/
-PREDICTION_DATA_FOLDER_PATH=../../CodeCompletion-line/dataset/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/
+PREDICTION_DATA_FOLDER_PATH=../../CodeCompletion-line/dataset/javaCorpus/${Percentage}/${SAMPLE_RATIO}/
 LITFILE=../dataset/javaCorpus/literals.json
 
 python run.py \
@@ -29,6 +29,7 @@ python run.py \
     --lit_file ${LITFILE} \
     --classifier_model_path ${MODEL} \
     --weight_decay=0.01 \
+    --seed 21
 
 done
 

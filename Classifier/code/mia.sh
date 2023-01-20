@@ -3,8 +3,8 @@
 # 3. 在1:1上进行评测
 export CUDA_VISIBLE_DEVICES=3
 MASTER_PORT=94457 # modify
-SURROGATE_MODEL=microsoft/CodeGPT-small-java # modify
-
+SURROGATE_MODEL=gpt2 # modify
+Percentage=0.01
 
 
 for SAMPLE_RATIO in {10..30..10}
@@ -12,7 +12,7 @@ do
 
 LANG=java    
 CLASSIFIER_SAVE_DICT=../classifier_save/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/
-PREDICTION_DATA_FOLDER_PATH=../../CodeCompletion-line/dataset/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/
+PREDICTION_DATA_FOLDER_PATH=../../CodeCompletion-line/dataset/javaCorpus/${Percentage}/${SAMPLE_RATIO}/
 LITFILE=../dataset/javaCorpus/literals.json
 
 python mia.py \
