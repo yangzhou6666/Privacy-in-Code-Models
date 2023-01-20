@@ -276,14 +276,15 @@ def split_train_victim(data_file,lang,sep_token,file_type,save_path,apperaed_id,
   
 
 if __name__ =='__main__':
-    token_data_dir = '../../../CodeCompletion-token/dataset/javaCorpus/token_completion'
-    model_name = 'gpt2'
-    model_name = model_name.split('/')[-1]
-    SAMPLE_RATIO=30
-    if not os.path.exists(os.path.join(model_name,str(SAMPLE_RATIO))):
-        os.makedirs(os.path.join(model_name,str(SAMPLE_RATIO)))
-    saved_path = os.path.join(model_name,str(SAMPLE_RATIO))
-    path = os.path.join(token_data_dir,f'train_surrogate_{model_name}_{str(SAMPLE_RATIO)}.txt')
+    percentatge = 0.01
+    token_data_dir = f"../../../CodeCompletion-token/dataset/javaCorpus/token_completion/{str(percentatge)}"
+    # model_name = 'gpt2'
+    # model_name = model_name.split('/')[-1]
+    SAMPLE_RATIO=10
+    if not os.path.exists(os.path.join(str(percentatge),str(SAMPLE_RATIO))):
+        os.makedirs(os.path.join(str(percentatge),str(SAMPLE_RATIO)))
+    saved_path = os.path.join(str(percentatge),str(SAMPLE_RATIO))
+    path = os.path.join(token_data_dir,f'train_{str(SAMPLE_RATIO)}.txt')
     surrogate_train_num,apperaed_id = split_train_surrogate(path,'java',None,'train',saved_path)
 
     path = os.path.join(token_data_dir,f'test.txt')
