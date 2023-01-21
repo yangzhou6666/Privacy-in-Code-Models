@@ -16,8 +16,9 @@ import zlib
 from transformers import AutoTokenizer, AutoModelWithLMHead, AutoModelForCausalLM
 from tqdm import tqdm
 
-GPU = 0
-os.environ['CUDA_VISIBLE_DEVICES'] = str(GPU)
+GPU = __file__[-4] # last character of the filename is the GPU number
+print(f"using GPU: {GPU}")
+os.environ['CUDA_VISIBLE_DEVICES'] = GPU
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def calculatePerplexity(sentence, model, tokenizer):
@@ -75,7 +76,7 @@ def main():
     if args.internet_sampling:
         print("Loading common crawl...")
         cc = parse_commoncrawl(args.wet_file)
-    model1_name = "facebook/incoder-6B"
+    model1_name = "facebook/incoder-1B"
     model2_name = "microsoft/CodeGPT-small-java"
     model_to_record = model1_name.split("/")[1]
     output_file = f"samples_{model_to_record}_{GPU}.csv"
@@ -86,7 +87,7 @@ def main():
     # sample from the top_k tokens output by the model
     top_k = 40
 
-    print("Loading codeGPT...")
+    print(f"Loading {model1_name} and {model2_name}...")
     tokenizer1 = AutoTokenizer.from_pretrained(model1_name)
     tokenizer1.padding_side = "left" 
     tokenizer1.pad_token = tokenizer1.eos_token
@@ -95,7 +96,8 @@ def main():
     tokenizer2.padding_side = "left"
     tokenizer2.pad_token = tokenizer2.eos_token
 
-    model1 = AutoModelForCausalLM.from_pretrained(model1_name,revision="float16", torch_dtype=torch.float16, low_cpu_mem_usage=True).to(device)
+    #model1 = AutoModelForCausalLM.from_pretrained(model1_name,revision="float16", torch_dtype=torch.float16, low_cpu_mem_usage=True).to(device)
+    model1 = AutoModelForCausalLM.from_pretrained(model1_name).to(device)
     #model1.config.pad_token_id = model1.config.eos_token_id
     model2 = AutoModelForCausalLM.from_pretrained(model2_name).to(device)
     model2.config.pad_token_id = model2.config.eos_token_id
