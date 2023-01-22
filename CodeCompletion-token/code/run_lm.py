@@ -41,7 +41,8 @@ from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
                           GPT2Config, GPT2LMHeadModel, GPT2Tokenizer,
                           OpenAIGPTConfig, OpenAIGPTLMHeadModel, OpenAIGPTTokenizer,
                           RobertaConfig, RobertaForMaskedLM, RobertaTokenizer,
-                          DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer)
+                          DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer,
+                          AutoModelForCausalLM, AutoTokenizer,AutoConfig,T5ForConditionalGeneration)
 from model import RNNModel
 
 # logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
@@ -56,7 +57,9 @@ MODEL_CLASSES = {
     'bert': (BertConfig, BertForMaskedLM, BertTokenizer),
     'roberta': (RobertaConfig, RobertaForMaskedLM, RobertaTokenizer),
     'distilbert': (DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer),
-    "transformer": (GPT2Config, GPT2LMHeadModel, GPT2Tokenizer)
+    "transformer": (GPT2Config, GPT2LMHeadModel, GPT2Tokenizer),
+    'xgml':(AutoConfig, AutoModelForCausalLM, AutoTokenizer),
+    't5':(AutoConfig, T5ForConditionalGeneration, AutoTokenizer)
 }
 
 
@@ -147,12 +150,10 @@ def train(args, train_dataset, model, tokenizer, fh, pool):
     # multi-gpu training (should be after apex fp16 initialization)
     if args.n_gpu > 1:
         model = torch.nn.DataParallel(model)
-
     # Distributed training (should be after apex fp16 initialization)
     if args.local_rank != -1:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank%args.gpu_per_node],
                                                           output_device=args.local_rank%args.gpu_per_node)
-
     # Train!
     logger.info("***** Running training *****")
     logger.info("  Num examples = %d", total_examples )
@@ -168,7 +169,7 @@ def train(args, train_dataset, model, tokenizer, fh, pool):
     model.zero_grad()
     set_seed(args)  # Added here for reproducibility (even between python 2 and 3)
  
-    for idx in range(args.start_epoch, int(args.num_train_epochs)): 
+    for epoch_idx in range(args.start_epoch, int(args.num_train_epochs)): 
         for step, batch in enumerate(train_dataloader):
             inputs, labels = (batch, batch)
             inputs = inputs.to(args.device)
@@ -206,56 +207,36 @@ def train(args, train_dataset, model, tokenizer, fh, pool):
                     logging_loss = tr_loss
                     tr_nb=global_step
 
-                if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
-                    checkpoint_prefix = "checkpoint"
-                    # Save model checkpoint
-                    if args.evaluate_during_training:  # Only evaluate when single GPU otherwise metrics may not average well
-                        results = evaluate(args, model, tokenizer, eval_when_training=True)
-                        for key, value in results.items():
-                            logger.info("  %s = %s", key, round(value,4))                    
-                        output_dir = os.path.join(args.output_dir, '{}-{}-{}'.format(checkpoint_prefix, global_step, round(results['perplexity'],4)))
-                    else:
-                        output_dir = os.path.join(args.output_dir, "{}-{}".format(checkpoint_prefix, global_step))
-                    if not os.path.exists(output_dir):
-                        os.makedirs(output_dir)
-                    model_to_save = (
-                        model.module if hasattr(model, "module") else model
-                    )  # Take care of distributed/parallel training
-                    if args.model_type == "rnn":
-                        torch.save(model_to_save.state_dict(), os.path.join(output_dir, "model.pt"))
-                    else:
-                        model_to_save.save_pretrained(output_dir)
-                    tokenizer.save_pretrained(output_dir)
+        if args.local_rank in [-1, 0] :
+            model_to_save = (
+                model.module if hasattr(model, "module") else model
+            )  # Take care of distributed/parallel training
+            # _rotate_checkpoints(args, checkpoint_prefix)
+            last_output_dir = os.path.join(args.output_dir, f'checkpoint-epoch-{epoch_idx}')
+            if not os.path.exists(last_output_dir):
+                os.makedirs(last_output_dir)
+            if args.model_type == "rnn":
+                torch.save(model_to_save.state_dict(), os.path.join(last_output_dir, "model.pt"))
+            else:
+                model_to_save.save_pretrained(last_output_dir)
+            tokenizer.save_pretrained(last_output_dir)
+            idx_file = os.path.join(last_output_dir, 'idx_file.txt')
+            with open(idx_file, 'w', encoding='utf-8') as idxf:
+                idxf.write(str(0) + '\n')
 
-                    torch.save(args, os.path.join(output_dir, "training_args.bin"))
-                    logger.info("Saving model checkpoint to %s", output_dir)
+            torch.save(optimizer.state_dict(), os.path.join(last_output_dir, "optimizer.pt"))
+            # torch.save(scheduler.state_dict(), os.path.join(last_output_dir, "scheduler.pt"))
+            logger.info("Saving optimizer and scheduler states to %s", last_output_dir)
 
-                    # _rotate_checkpoints(args, checkpoint_prefix)
-                    last_output_dir = os.path.join(args.output_dir, 'checkpoint-last')
-                    if not os.path.exists(last_output_dir):
-                        os.makedirs(last_output_dir)
-                    if args.model_type == "rnn":
-                        torch.save(model_to_save.state_dict(), os.path.join(last_output_dir, "model.pt"))
-                    else:
-                        model_to_save.save_pretrained(last_output_dir)
-                    tokenizer.save_pretrained(last_output_dir)
-                    idx_file = os.path.join(last_output_dir, 'idx_file.txt')
-                    with open(idx_file, 'w', encoding='utf-8') as idxf:
-                        idxf.write(str(0) + '\n')
-
-                    torch.save(optimizer.state_dict(), os.path.join(last_output_dir, "optimizer.pt"))
-                    # torch.save(scheduler.state_dict(), os.path.join(last_output_dir, "scheduler.pt"))
-                    logger.info("Saving optimizer and scheduler states to %s", last_output_dir)
-
-                    step_file = os.path.join(last_output_dir, 'step_file.txt')
-                    with open(step_file, 'w', encoding='utf-8') as stepf:
-                        stepf.write(str(global_step) + '\n')
+            step_file = os.path.join(last_output_dir, 'step_file.txt')
+            with open(step_file, 'w', encoding='utf-8') as stepf:
+                stepf.write(str(global_step) + '\n')
                     
 
-            if args.max_steps > 0 and global_step > args.max_steps:
-                break
-        if args.max_steps > 0 and global_step > args.max_steps:
-            break
+        #     if args.max_steps > 0 and global_step > args.max_steps:
+        #         break
+        # if args.max_steps > 0 and global_step > args.max_steps:
+        #     break
 
     return global_step, tr_loss / global_step
 
@@ -599,7 +580,12 @@ def main():
     args.sample_ratio = args.sample_ratio*0.01
 
     # args.output_dir = os.path.join(args.output_dir, args.dataset)
-    args.output_dir = os.path.join(args.output_dir,args.pretrain_dir,str(int(args.sample_ratio*100)))
+    if args.pretrain_dir is not None:
+        args.output_dir = os.path.join(args.output_dir,args.pretrain_dir,str(int(args.sample_ratio*100)))
+    elif args.tokenizer_dir is not None and args.model_type in ['transformer','rnn']:
+        args.output_dir = os.path.join(args.output_dir,args.model_type,str(int(args.sample_ratio*100)))
+    else:
+        raise
 
     if args.model_type in ["bert", "roberta", "distilbert"] and not args.mlm:
         raise ValueError("BERT and RoBERTa do not have LM heads but masked LM heads. They must be run using the --mlm "
@@ -637,7 +623,8 @@ def main():
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                         datefmt='%m/%d/%Y %H:%M:%S',
                         level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN)
-    logger.warning("Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s, world size: %s",
+                        # level=logging.INFO)
+    logger.info("Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s, world size: %s",
                    args.local_rank, device, args.n_gpu, bool(args.local_rank != -1), args.fp16,
                    torch.distributed.get_world_size() if args.local_rank != -1 else 1)
 
@@ -686,7 +673,10 @@ def main():
                 logger.warning(f"Loading model from {model_last}")
                 model.load_state_dict(torch.load(model_last, map_location="cpu")) 
         else:
-            model = model_class.from_pretrained(pretrained)
+            if pretrained == 'bigcode/santacoder':
+                model = model_class.from_pretrained(pretrained,trust_remote_code=True)
+            else:
+                model = model_class.from_pretrained(pretrained)
             model.resize_token_embeddings(len(tokenizer))
     else:
         tokenizer = tokenizer_class.from_pretrained(args.tokenizer_dir, sep_token='<EOL>', bos_token='<s>', eos_token='</s>', pad_token='<pad>', unk_token='<|UNKNOWN|>', additional_special_tokens=special_tokens)
