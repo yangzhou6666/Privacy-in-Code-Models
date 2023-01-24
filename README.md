@@ -4,6 +4,19 @@
 
 # Environment Configuration
 
+## Conda
+
+```Shell
+pip install tqdm pandas
+pip install transformers==3.0.2
+python -m pip install huggingface_hub
+conda install pytorch==1.5.1 torchvision==0.6.1 cudatoolkit=10.1 -c pytorch
+# You may need to update the pytorch installation command accordingly based on your CUDA version.
+```
+
+
+
+
 ## Build Docker Image
 
 ```
