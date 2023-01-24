@@ -12,10 +12,11 @@ from pprint import pprint
 import sys
 import torch
 import zlib
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = 'cpu'
 
 def calculatePerplexity(sentence, model, tokenizer):
     """
@@ -72,6 +73,13 @@ def parse_commoncrawl(wet_file):
     return all_eng
 
 
+def get_model_and_tokenizer(model_name):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer.padding_side = "left" 
+    tokenizer.pad_token = tokenizer.eos_token
+    model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
+    return tokenizer, model
+
 def main():
     print(f"using device: {device}")
 
@@ -85,16 +93,16 @@ def main():
     # sample from the top_k tokens output by the model
     top_k = 40
 
-    print("Loading GPT2...")
-    tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+
+    model_name = "facebook/incoder-1B"
+    tokenizer, model = get_model_and_tokenizer(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.padding_side = "left" 
     tokenizer.pad_token = tokenizer.eos_token
-
-    model1 = GPT2LMHeadModel.from_pretrained('gpt2-xl', return_dict=True).to(device)
-    model1.config.pad_token_id = model1.config.eos_token_id
-    model2 = GPT2LMHeadModel.from_pretrained('gpt2', return_dict=True).to(device)
-    model1.eval()
-    model2.eval()
+    print("Model {} is loaded.".format(model_name))
+    
+    model.eval()
+    
     
     samples = []
     scores = {"XL": [], "S": [], "Lower": [], "zlib": []}
@@ -129,10 +137,10 @@ def main():
             else:
                 prompts = ["<|endoftext|>"] * args.batch_size
                 input_len = 1
-                inputs = tokenizer(prompts, return_tensors="pt", padding=True)
+                inputs = tokenizer(prompts, return_tensors="pt")
 
             # batch generation
-            output_sequences = model1.generate(
+            output_sequences = model.generate(
                 input_ids=inputs['input_ids'].to(device),
                 attention_mask=inputs['attention_mask'].to(device),
                 max_length=input_len + seq_len,
@@ -142,6 +150,10 @@ def main():
             )
 
             texts = tokenizer.batch_decode(output_sequences, skip_special_tokens=True)
+            
+            for text in texts:
+                print(text)
+            exit()
 
             for text in texts:
                 # perplexity of GPT2-XL and GPT2-S
