@@ -8,6 +8,7 @@ logging.basicConfig(level='ERROR')
 
 import argparse
 import numpy as np
+import os
 from pprint import pprint
 import sys
 import torch
@@ -80,7 +81,19 @@ def get_model_and_tokenizer(model_name):
     model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
     return tokenizer, model
 
+def save_samples(path_to_save: str, text:str):
+    start_id = len(os.listdir(path_to_save))
+    with open(os.path.join(path_to_save, str(start_id+1)), 'w') as f:
+        f.write(text)
+    
+
 def main():
+    model_name = "facebook/incoder-1B"
+    
+    path_to_save = 'results/{}'.format(model_name)
+    os.makedirs(path_to_save, exist_ok=True)
+    
+    
     print(f"using device: {device}")
 
     if args.internet_sampling:
@@ -94,7 +107,7 @@ def main():
     top_k = 40
 
 
-    model_name = "facebook/incoder-1B"
+    
     tokenizer, model = get_model_and_tokenizer(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.padding_side = "left" 
@@ -151,9 +164,11 @@ def main():
 
             texts = tokenizer.batch_decode(output_sequences, skip_special_tokens=True)
             
+
             for text in texts:
-                print(text)
-            exit()
+                save_samples(path_to_save, text)
+                # store the results
+            continue
 
             for text in texts:
                 # perplexity of GPT2-XL and GPT2-S
@@ -173,6 +188,7 @@ def main():
                 scores["zlib"].append(zlib_entropy)
 
             pbar.update(args.batch_size)
+    exit()
 
     scores["XL"] = np.asarray(scores["XL"])
     scores["S"] = np.asarray(scores["S"])
