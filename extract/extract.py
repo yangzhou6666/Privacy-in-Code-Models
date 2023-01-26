@@ -79,6 +79,8 @@ def get_model_and_tokenizer(model_name):
     tokenizer.padding_side = "left" 
     tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
+
+    print("Model {} is loaded.".format(model_name))
     return tokenizer, model
 
 def save_samples(path_to_save: str, text:str):
@@ -96,137 +98,56 @@ def main():
     
     print(f"using device: {device}")
 
-    if args.internet_sampling:
-        print("Loading common crawl...")
-        cc = parse_commoncrawl(args.wet_file)
-
     # number of tokens to generate
     seq_len = 256
 
     # sample from the top_k tokens output by the model
     top_k = 40
 
-
     
     tokenizer, model = get_model_and_tokenizer(model_name)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.padding_side = "left" 
-    tokenizer.pad_token = tokenizer.eos_token
-    print("Model {} is loaded.".format(model_name))
-    
     model.eval()
     
     
     samples = []
-    scores = {"XL": [], "S": [], "Lower": [], "zlib": []}
 
     num_batches = int(np.ceil(args.N / args.batch_size))
 
     for i in tqdm(range(num_batches)):
         # encode the prompts
         if args.internet_sampling:
-            # pick a random 10-token prompt in common crawl 
-
-            input_len = 10
-            input_ids = []
-            attention_mask = []
-
-            while len(input_ids) < args.batch_size:
-                # take some random words in common crawl
-                r = np.random.randint(0, len(cc))
-                prompt = " ".join(cc[r:r+100].split(" ")[1:-1])
-
-                # make sure we get the same number of tokens for each prompt to enable batching
-                inputs = tokenizer(prompt, return_tensors="pt", max_length=input_len, truncation=True)
-                if len(inputs['input_ids'][0]) == input_len:
-                    input_ids.append(inputs['input_ids'][0])
-                    attention_mask.append(inputs['attention_mask'][0])
-
-            inputs = {'input_ids': torch.stack(input_ids), 
-                        'attention_mask': torch.stack(attention_mask)}
-
-            # the actual truncated prompts
-            prompts = tokenizer.batch_decode(inputs['input_ids'], skip_special_tokens=True)
+            raise NotImplementedError
         else:
             prompts = ["<|endoftext|>"] * args.batch_size
             input_len = 1
             inputs = tokenizer(prompts, return_tensors="pt")
 
-        # batch generation
-        output_sequences = model.generate(
-            input_ids=inputs['input_ids'].to(device),
-            attention_mask=inputs['attention_mask'].to(device),
-            max_length=input_len + seq_len,
-            do_sample=True, 
-            top_k=top_k, 
-            top_p=1.0
-        )
+        if temperature_decaying:
+            raise NotImplementedError
+        else: 
+            # batch generation
+            output_sequences = model.generate(
+                input_ids=inputs['input_ids'].to(device),
+                attention_mask=inputs['attention_mask'].to(device),
+                max_length=input_len + seq_len,
+                do_sample=True, 
+                top_k=top_k, 
+                top_p=1.0
+            )
 
-        texts = tokenizer.batch_decode(output_sequences, skip_special_tokens=True)
+            texts = tokenizer.batch_decode(output_sequences, skip_special_tokens=True)
         
-
         for text in texts:
             save_samples(path_to_save, text)
             # store the results
-        continue
 
-        for text in texts:
-            # perplexity of GPT2-XL and GPT2-S
-            p1 = calculatePerplexity(text, model1, tokenizer)
-            p2 = calculatePerplexity(text, model2, tokenizer)
-
-            # perplexity on lower-case sample
-            p_lower = calculatePerplexity(text.lower(), model1, tokenizer)
-
-            # Zlib "entropy" of sample
-            zlib_entropy = len(zlib.compress(bytes(text, 'utf-8')))
-
-            samples.append(text)
-            scores["XL"].append(p1)
-            scores["S"].append(p2)
-            scores["Lower"].append(p_lower)
-            scores["zlib"].append(zlib_entropy)
-
-        pbar.update(args.batch_size)
-    exit()
-
-    scores["XL"] = np.asarray(scores["XL"])
-    scores["S"] = np.asarray(scores["S"])
-    scores["Lower"] = np.asarray(scores["Lower"])
-    scores["zlib"] = np.asarray(scores["zlib"])
-
-    # Sort by perplexity
-    metric = -np.log(scores["XL"])
-    print(f"======== top sample by XL perplexity: ========")
-    print_best(metric, samples, "PPL", scores["XL"])
-    print()
-    print()
-
-    # Sort by ratio of log perplexities of S and XL models
-    metric = np.log(scores["S"]) / np.log(scores["XL"])
-    print(f"======== top sample by ratio of S and XL perplexities: ========")
-    print_best(metric, samples, "PPL-XL", scores["XL"], "PPL-S", scores["S"])
-    print()
-    print()
-
-    # Sort by ratio of log perplexities of lower-case and normal-case perplexities 
-    metric = np.log(scores["Lower"]) / np.log(scores["XL"])
-    print(f"======== top sample by ratio of lower-case and normal-case perplexities: ========")
-    print_best(metric, samples, "PPL-XL", scores["XL"], "PPL-XL-Lower", scores["Lower"])
-    print()
-    print()
-
-    # Sort by ratio of Zlib entropy and XL perplexity
-    metric = scores["zlib"] / np.log(scores["XL"])
-    print(f"======== top sample by ratio of Zlib entropy and XL perplexity: ========")
-    print_best(metric, samples, "PPL-XL", scores["XL"], "Zlib", scores["zlib"])
 
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('--N', type=int, default=20000, help="Number of samples to generate")
     parser.add_argument('--batch-size', type=int, default=20, help="Batch size for generation")
-    parser.add_argument('--internet-sampling', action='store_true', help="condition the generation using commoncrawl")
-    parser.add_argument('--wet-file', type=str, default=None, help="path to a commoncrawl WET file")
+    parser.add_argument('--temperature', type=float, default=1.0, help="Start temperature")
+
     return parser.parse_args(argv)
 
 if __name__ == '__main__':
