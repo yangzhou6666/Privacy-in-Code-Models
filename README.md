@@ -11,6 +11,7 @@ pip install tqdm pandas
 pip install transformers==3.0.2
 python -m pip install huggingface_hub
 conda install pytorch==1.5.1 torchvision==0.6.1 cudatoolkit=10.1 -c pytorch
+pip install accelerate
 # You may need to update the pytorch installation command accordingly based on your CUDA version.
 ```
 
@@ -35,11 +36,32 @@ Example:
 docker run --name=privacy-code --gpus all -it -v /mnt/hdd1/zyang/Privacy-in-Code-Models:/Privacy-in-Code-Models privacy-code:latest
 ```
 
+# Run
 
-# Code Completion on Tokens 
+## Instructions
 
-Refer to `CodeCompletion-token/README.md` for instructions.
+```bash
+cd extract
+python extract.py \
+    --model codeparrot/codeparrot \
+    --N 20000 \
+    --batch-size 20 \
+    --gpu_id 0
+```
 
-# Code Completion on Lines 
 
-Refer to `CodeCompletion-line/README.md` for instructions.
+### Models
+
+* facebook/incoder-6B
+* facebook/incoder-1B
+* Salesforce/codegen-350M-multi
+* Salesforce/codegen-350M-nl
+* Salesforce/codegen-350M-mono
+* Salesforce/codegen-2B-multi
+* Salesforce/codegen-2B-nl
+* Salesforce/codegen-2B-mono
+* Salesforce/codegen-6B-multi
+* Salesforce/codegen-6B-nl
+* Salesforce/codegen-6B-mono
+* codeparrot/codeparrot-small
+* codeparrot/codeparrot
