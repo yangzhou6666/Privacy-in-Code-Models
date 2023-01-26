@@ -17,7 +17,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device = 'cpu'
+
 
 def calculatePerplexity(sentence, model, tokenizer):
     """
@@ -88,7 +88,7 @@ def save_samples(path_to_save: str, text:str):
     
 
 def main():
-    model_name = "facebook/incoder-1B"
+    model_name = "facebook/incoder-6B"
     
     path_to_save = 'results/{}'.format(model_name)
     os.makedirs(path_to_save, exist_ok=True)
@@ -121,73 +121,73 @@ def main():
     scores = {"XL": [], "S": [], "Lower": [], "zlib": []}
 
     num_batches = int(np.ceil(args.N / args.batch_size))
-    with tqdm(total=args.N) as pbar:
-        for i in range(num_batches):
-            # encode the prompts
-            if args.internet_sampling:
-                # pick a random 10-token prompt in common crawl 
 
-                input_len = 10
-                input_ids = []
-                attention_mask = []
+    for i in tqdm(range(num_batches)):
+        # encode the prompts
+        if args.internet_sampling:
+            # pick a random 10-token prompt in common crawl 
 
-                while len(input_ids) < args.batch_size:
-                    # take some random words in common crawl
-                    r = np.random.randint(0, len(cc))
-                    prompt = " ".join(cc[r:r+100].split(" ")[1:-1])
+            input_len = 10
+            input_ids = []
+            attention_mask = []
 
-                    # make sure we get the same number of tokens for each prompt to enable batching
-                    inputs = tokenizer(prompt, return_tensors="pt", max_length=input_len, truncation=True)
-                    if len(inputs['input_ids'][0]) == input_len:
-                        input_ids.append(inputs['input_ids'][0])
-                        attention_mask.append(inputs['attention_mask'][0])
+            while len(input_ids) < args.batch_size:
+                # take some random words in common crawl
+                r = np.random.randint(0, len(cc))
+                prompt = " ".join(cc[r:r+100].split(" ")[1:-1])
 
-                inputs = {'input_ids': torch.stack(input_ids), 
-                          'attention_mask': torch.stack(attention_mask)}
+                # make sure we get the same number of tokens for each prompt to enable batching
+                inputs = tokenizer(prompt, return_tensors="pt", max_length=input_len, truncation=True)
+                if len(inputs['input_ids'][0]) == input_len:
+                    input_ids.append(inputs['input_ids'][0])
+                    attention_mask.append(inputs['attention_mask'][0])
 
-                # the actual truncated prompts
-                prompts = tokenizer.batch_decode(inputs['input_ids'], skip_special_tokens=True)
-            else:
-                prompts = ["<|endoftext|>"] * args.batch_size
-                input_len = 1
-                inputs = tokenizer(prompts, return_tensors="pt")
+            inputs = {'input_ids': torch.stack(input_ids), 
+                        'attention_mask': torch.stack(attention_mask)}
 
-            # batch generation
-            output_sequences = model.generate(
-                input_ids=inputs['input_ids'].to(device),
-                attention_mask=inputs['attention_mask'].to(device),
-                max_length=input_len + seq_len,
-                do_sample=True, 
-                top_k=top_k, 
-                top_p=1.0
-            )
+            # the actual truncated prompts
+            prompts = tokenizer.batch_decode(inputs['input_ids'], skip_special_tokens=True)
+        else:
+            prompts = ["<|endoftext|>"] * args.batch_size
+            input_len = 1
+            inputs = tokenizer(prompts, return_tensors="pt")
 
-            texts = tokenizer.batch_decode(output_sequences, skip_special_tokens=True)
-            
+        # batch generation
+        output_sequences = model.generate(
+            input_ids=inputs['input_ids'].to(device),
+            attention_mask=inputs['attention_mask'].to(device),
+            max_length=input_len + seq_len,
+            do_sample=True, 
+            top_k=top_k, 
+            top_p=1.0
+        )
 
-            for text in texts:
-                save_samples(path_to_save, text)
-                # store the results
-            continue
+        texts = tokenizer.batch_decode(output_sequences, skip_special_tokens=True)
+        
 
-            for text in texts:
-                # perplexity of GPT2-XL and GPT2-S
-                p1 = calculatePerplexity(text, model1, tokenizer)
-                p2 = calculatePerplexity(text, model2, tokenizer)
+        for text in texts:
+            save_samples(path_to_save, text)
+            # store the results
+        continue
 
-                # perplexity on lower-case sample
-                p_lower = calculatePerplexity(text.lower(), model1, tokenizer)
+        for text in texts:
+            # perplexity of GPT2-XL and GPT2-S
+            p1 = calculatePerplexity(text, model1, tokenizer)
+            p2 = calculatePerplexity(text, model2, tokenizer)
 
-                # Zlib "entropy" of sample
-                zlib_entropy = len(zlib.compress(bytes(text, 'utf-8')))
+            # perplexity on lower-case sample
+            p_lower = calculatePerplexity(text.lower(), model1, tokenizer)
 
-                samples.append(text)
-                scores["XL"].append(p1)
-                scores["S"].append(p2)
-                scores["Lower"].append(p_lower)
-                scores["zlib"].append(zlib_entropy)
+            # Zlib "entropy" of sample
+            zlib_entropy = len(zlib.compress(bytes(text, 'utf-8')))
 
-            pbar.update(args.batch_size)
+            samples.append(text)
+            scores["XL"].append(p1)
+            scores["S"].append(p2)
+            scores["Lower"].append(p_lower)
+            scores["zlib"].append(zlib_entropy)
+
+        pbar.update(args.batch_size)
     exit()
 
     scores["XL"] = np.asarray(scores["XL"])
@@ -223,8 +223,8 @@ def main():
 
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--N', type=int, default=1000, help="Number of samples to generate")
-    parser.add_argument('--batch-size', type=int, default=10, help="Batch size for generation")
+    parser.add_argument('--N', type=int, default=20000, help="Number of samples to generate")
+    parser.add_argument('--batch-size', type=int, default=20, help="Batch size for generation")
     parser.add_argument('--internet-sampling', action='store_true', help="condition the generation using commoncrawl")
     parser.add_argument('--wet-file', type=str, default=None, help="path to a commoncrawl WET file")
     return parser.parse_args(argv)
