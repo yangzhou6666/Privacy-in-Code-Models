@@ -38,19 +38,8 @@ docker run --name=privacy-code --gpus all -it -v /mnt/hdd1/zyang/Privacy-in-Code
 
 # Run
 
-## Instructions
 
-```bash
-cd extract
-python extract.py \
-    --model codeparrot/codeparrot \
-    --N 20000 \
-    --batch-size 20 \
-    --gpu_id 0
-```
-
-
-### Models
+## Models
 
 * facebook/incoder-6B
 * facebook/incoder-1B
@@ -65,3 +54,19 @@ python extract.py \
 * Salesforce/codegen-6B-mono
 * codeparrot/codeparrot-small
 * codeparrot/codeparrot
+
+You can `cd extract` and run `python cache_models.py` to download necessary models first.
+You can also skip this step and download models as needed.
+
+
+## Instructions
+
+```bash
+cd extract
+python extract.py \
+    --model codeparrot/codeparrot \
+    --N 20000 \
+    --batch-size 20 \
+    --gpu_id 0
+```
+
