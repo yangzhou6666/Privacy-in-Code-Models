@@ -39,7 +39,7 @@ def save_samples(path_to_save: str, text:str):
 def main():
     model_name = args.model
     
-    path_to_save = 'results/{}-temp{}-len{}-k{}'.format(model_name, args.temperature, args.seq_len, args.top_k)
+    path_to_save = 'results/{}-temp{}-len{}-k{}/seperate'.format(model_name, args.temperature, args.seq_len, args.top_k)
     os.makedirs(path_to_save, exist_ok=True)
     
 
