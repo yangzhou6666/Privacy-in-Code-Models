@@ -64,7 +64,7 @@ def main():
         if args.internet_sampling:
             raise NotImplementedError
         else:
-            prompts = ["<|endoftext|>"] * args.batch_size
+            prompts = [tokenizer.bos_token] * args.batch_size
             input_len = 1
             inputs = tokenizer(prompts, return_tensors="pt")
 
