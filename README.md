@@ -59,14 +59,32 @@ You can `cd extract` and run `python cache_models.py` to download necessary mode
 You can also skip this step and download models as needed.
 
 
-## Instructions
+## Sample from Code Models
 
 ```bash
 cd extract
 python extract.py \
-    --model codeparrot/codeparrot \
-    --N 20000 \
-    --batch-size 20 \
-    --gpu_id 0
+    --model facebook/incoder-6B \
+    --N 100000 \
+    --batch-size 10 \
+    --seq_len 512 \
+    --gpu_id 3
 ```
+
+```
+python merge.py \
+    --model Salesforce/codegen-6B-multi \
+    --seq_len 512
+```
+
+
+## Memorization Analysis
+
+```
+python cache_data.py 2>&1 | tee download.log
+```
+
+## Personally Identifiable Information Analysis
+
+
 
