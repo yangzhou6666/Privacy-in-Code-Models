@@ -1,5 +1,5 @@
 import json
-
+from tqdm import tqdm
 from utils.emails_ip_addresses_detection import detect_email_addresses
 from utils.keys_detection import detect_keys
 
@@ -24,7 +24,7 @@ def scan_pii_batch(examples, key_detector="other"):
     list_secrets = []
     list_has_secrets = []
     number_secrets = []
-    for text in examples["content"]:
+    for text in tqdm(examples["content"]):
         secrets = []
         if key_detector == "regex":
             # use a regex to detect keys + emails + ips
