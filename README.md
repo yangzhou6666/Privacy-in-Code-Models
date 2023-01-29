@@ -64,17 +64,19 @@ You can also skip this step and download models as needed.
 ```bash
 cd extract
 python extract.py \
-    --model facebook/incoder-6B \
+    --model Salesforce/codegen-350M-multi \
     --N 100000 \
-    --batch-size 10 \
+    --batch-size 100 \
     --seq_len 512 \
-    --gpu_id 3
+    --top_k 20 \
+    --gpu_id 2 \
+     2>&1 | tee results/ccodegen-350M-multi-k20.log &
 ```
 
 ```
 python merge.py \
-    --model Salesforce/codegen-6B-multi \
-    --seq_len 512
+    --model Salesforce/codegen-350M-mono \
+    --seq_len 256 &
 ```
 
 
