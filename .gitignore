@@ -14,3 +14,4 @@ CodeCompletion-line/dataset/py150/line_completion_emails/
 CodeCompletion-benchmark/results/
 extract/results/
 clone/.data_cache/
+clone/save/
