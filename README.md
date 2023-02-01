@@ -63,14 +63,23 @@ You can also skip this step and download models as needed.
 
 ```bash
 cd extract
+
 python extract.py \
     --model Salesforce/codegen-350M-multi \
-    --N 100000 \
+    --N 50000 \
     --batch-size 100 \
     --seq_len 512 \
-    --top_k 20 \
-    --gpu_id 2 \
-     2>&1 | tee results/ccodegen-350M-multi-k20.log &
+    --top_k 5 \
+    --gpu_id 4 &
+
+
+python extract.py \
+    --model Salesforce/codegen-350M-mono \
+    --N 50000 \
+    --batch-size 80 \
+    --seq_len 768 \
+    --top_k 40 \
+    --gpu_id 7 &
 ```
 
 ```
