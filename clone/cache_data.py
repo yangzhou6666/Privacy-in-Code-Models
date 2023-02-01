@@ -36,14 +36,35 @@ def download_and_save_data(data_name, cache_dir=None, data_dir=None, split='trai
 if __name__ == '__main__':
     cache_dir = "./.data_cache" # Set your own cache directory here
     save_dir = "/home/zyang/privacy/save"
+
+    download_and_save_data(
+        data_name="bigcode/the-stack",
+        data_dir="data/java",
+        cache_dir=cache_dir,
+        split="train",
+        save_dir=save_dir
+    )
+
+    download_and_save_data(
+        data_name="bigcode/the-stack",
+        data_dir="data/python",
+        cache_dir=cache_dir,
+        split="train",
+        save_dir=save_dir
+    )
+
+    download_and_save_data(
+        data_name="bigcode/the-stack",
+        data_dir="data/javascript",
+        cache_dir=cache_dir,
+        split="train",
+        save_dir=save_dir
+    )
+
+    exit()
     download_and_save_data(
         data_name="codeparrot/codeparrot-clean",
         cache_dir=cache_dir,
         split="train",
         save_dir=save_dir
     )
-    exit()
-    ds_parrot = load_dataset("codeparrot/codeparrot-clean", split="train",cache_dir=cache_dir)
-    ds_java = load_dataset("bigcode/the-stack", data_dir="data/java", split="train",cache_dir=cache_dir)
-    ds_python = load_dataset("bigcode/the-stack", data_dir="data/python", split="train",cache_dir=cache_dir)
-    ds_js = load_dataset("bigcode/the-stack", data_dir="data/javascript", split="train",cache_dir=cache_dir)
