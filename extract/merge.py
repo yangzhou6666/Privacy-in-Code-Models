@@ -24,7 +24,6 @@ if __name__ == '__main__':
     args = parse_arguments()
     result_path = 'results/{}-temp{}-len{}-k{}'.format(args.model, args.temperature, args.seq_len, args.top_k)
     seperate_path = os.path.join(result_path, 'seperate')
-
     logger.info("Analyzing reuslts in {}".format(seperate_path))
     files = os.listdir(seperate_path)
     logger.info("Found {} files".format(len(files)))
@@ -32,12 +31,20 @@ if __name__ == '__main__':
     # merge all the files into one
     curser = 0
     map = {}
+    
+    max_file_num = min(50000, len(files))
     with open(os.path.join(result_path, 'all'), 'w') as f:
-        for file in tqdm(range(len(files))):
+        for file in tqdm(range(max_file_num)):
             file = str(file + 1)
             # jsut to make sure that the file is stored in the right order
             with open(os.path.join(seperate_path, file), 'r') as f2:
-                content = f2.read()
+                content = f2.readlines()
+                new_content = ''
+                for line in content:
+                    if line == '\n':
+                        continue
+                    new_content += line
+                content = new_content
                 # compute MD5
                 md5 = hashlib.md5(content.encode('utf-8')).hexdigest()
                 to_write = content + '\nSubmission>>>>>>' + md5 + '>>>>>>Submission\n'
