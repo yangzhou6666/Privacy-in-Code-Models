@@ -4,9 +4,20 @@ from datasets import load_dataset
 import os
 from tqdm import tqdm
 import logging
+import hashlib
 
 logging.basicConfig(level = logging.INFO,format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+def remove_lines(content: str):
+    lines = content.split('\n')
+    new_content = ''
+    for line in lines:
+        if line == '':
+            continue
+        new_content += line + '\n'
+    return new_content
 
 def download_and_save_data(data_name, cache_dir=None, data_dir=None, split='train', save_dir='./save'):
     logger.info("Downloading/Reusing data {} from {}".format(data_name, cache_dir))
@@ -29,13 +40,21 @@ def download_and_save_data(data_name, cache_dir=None, data_dir=None, split='trai
     for i in tqdm(range(batches)):
         with open(os.path.join(save_dir, str(i)), 'w') as f:
             for j in range(i*batch_size,(i+1)*batch_size):
-                hash = str(ds[j]['hash'])
+                content = remove_lines(ds[j]['content'])
+                hash = hashlib.md5(content.encode('utf-8')).hexdigest()
                 f.write(ds[j]['content'] + '\n' + hash + '\n')
     
 
 if __name__ == '__main__':
     cache_dir = "./.data_cache" # Set your own cache directory here
     save_dir = "/home/zyang/privacy/save"
+
+    download_and_save_data(
+        data_name="codeparrot/codeparrot-clean",
+        cache_dir=cache_dir,
+        split="train",
+        save_dir=save_dir
+    )
 
     download_and_save_data(
         data_name="bigcode/the-stack",
