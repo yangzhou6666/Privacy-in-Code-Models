@@ -42,12 +42,12 @@ def download_and_save_data(data_name, cache_dir=None, data_dir=None, split='trai
             for j in range(i*batch_size,(i+1)*batch_size):
                 content = remove_lines(ds[j]['content'])
                 hash = hashlib.md5(content.encode('utf-8')).hexdigest()
-                f.write(ds[j]['content'] + '\n' + hash + '\n')
+                f.write(content + '\n' + hash + '\n')
     
 
 if __name__ == '__main__':
     cache_dir = "./.data_cache" # Set your own cache directory here
-    save_dir = "/home/zyang/privacy/save"
+    save_dir = "./save"
 
     download_and_save_data(
         data_name="codeparrot/codeparrot-clean",
