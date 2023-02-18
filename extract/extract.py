@@ -25,7 +25,11 @@ def get_model_and_tokenizer(model_name):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.padding_side = "left" 
     tokenizer.pad_token = tokenizer.eos_token
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16)
+    if 'santacoder' in model_name:
+        model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16)
+    # it seems that santacode cannot be load in half precision
 
     print("Model {} is loaded.".format(model_name))
     return tokenizer, model
