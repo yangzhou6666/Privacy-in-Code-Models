@@ -20,21 +20,15 @@ def parse_arguments():
 
     return parser.parse_args()
 
-if __name__ == '__main__':
-    args = parse_arguments()
-    result_path = 'results/{}-temp{}-len{}-k{}'.format(args.model, args.temperature, args.seq_len, args.top_k)
-    seperate_path = os.path.join(result_path, 'seperate')
-    logger.info("Analyzing reuslts in {}".format(seperate_path))
-    files = os.listdir(seperate_path)
-    logger.info("Found {} files".format(len(files)))
-
+def store(result_path, seperate_path, files, size):
     # merge all the files into one
     curser = 0
     map = {}
+    print(os.path.join(result_path, 'all_{}'.format(size)))
     
-    max_file_num = min(50000, len(files))
-    with open(os.path.join(result_path, 'all'), 'w') as f:
-        for file in tqdm(range(max_file_num)):
+    size = min(size, len(files))
+    with open(os.path.join(result_path, 'all_{}'.format(size)), 'w') as f:
+        for file in tqdm(range(size)):
             file = str(file + 1)
             # jsut to make sure that the file is stored in the right order
             with open(os.path.join(seperate_path, file), 'r') as f2:
@@ -58,10 +52,24 @@ if __name__ == '__main__':
                 curser = curser + num_of_line - 1
 
     # store map into json file
-    with open(os.path.join(result_path, 'map.json'), 'w') as f:
+    with open(os.path.join(result_path, 'map_{}.json'.format(size)), 'w') as f:
         json.dump(map, f)
 
     logger.info("Merged file is saved to {}".format(os.path.join(result_path, 'all')))
+
+if __name__ == '__main__':
+    args = parse_arguments()
+    result_path = 'results/{}-temp{}-len{}-k{}'.format(args.model, args.temperature, args.seq_len, args.top_k)
+    seperate_path = os.path.join(result_path, 'seperate')
+    logger.info("Analyzing reuslts in {}".format(seperate_path))
+    files = os.listdir(seperate_path)
+    logger.info("Found {} files".format(len(files)))
+
+    # store 100k to 1000k, step 100k
+    for i in range(100, 1001, 100):
+        store(result_path, seperate_path, files, i * 1000)
+
+
 
 
 
