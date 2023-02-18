@@ -11,14 +11,25 @@ logger = logging.getLogger(__name__)
 
 
 if __name__ == '__main__':
-    log_dir = 'log/save/codeparrot/codeparrot-clean'
-    result_path = 'memorization.json'
+    root_dir = './'
+
+    # from which model the results to be analyzed
+    config = {'model': 'codeparrot/codeparrot', 'temp': 1.0, 'len': 1024, 'k': 40}
+    generated_folder = '{}-temp{}-len{}-k{}'.format(config['model'], config['temp'], config['len'], config['k'])
+
+
+    log_dir = os.path.join(root_dir, 'log/save/', generated_folder)
+    stats_path = os.path.join(log_dir, 'stats')
+    os.makedirs(stats_path, exist_ok=True)
 
 
     memorization = {}
+    memorization_path = os.path.join(stats_path, 'memorization.json')
 
     for log in os.listdir(log_dir):
         log_path = os.path.join(log_dir, log)
+        if not log.endswith('.log'):
+            continue
         data = None
         
         with open(log_path, 'r') as f:
@@ -50,8 +61,9 @@ if __name__ == '__main__':
                     data['extract'] += 1
 
             # store as json
-            with open(result_path, 'w') as f:
+            with open(memorization_path, 'w') as f:
                 json.dump(memorization, f, indent=4)
+        # break
 
     '''Analyze the memorization'''
 
@@ -75,7 +87,7 @@ if __name__ == '__main__':
     plt.xlabel('length')
     plt.ylabel('count')
     # save
-    plt.savefig('length_distribution.png')
+    plt.savefig(os.path.join(stats_path, 'length_distribution.png'))
 
 
     # correlation between train and extract
@@ -90,7 +102,7 @@ if __name__ == '__main__':
     plt.xlabel('train')
     plt.ylabel('extract')
     # save
-    plt.savefig('correlation.png')
+    plt.savefig(os.path.join(stats_path, 'correlation.png'))
 
 
 
