@@ -4,6 +4,7 @@ import os
 import logging
 import json
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 logging.basicConfig(level = logging.INFO,format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -14,11 +15,12 @@ if __name__ == '__main__':
     root_dir = './'
 
     # from which model the results to be analyzed
-    config = {'model': 'codeparrot/codeparrot', 'temp': 1.0, 'len': 1024, 'k': 40}
+    config = {'model': 'codeparrot/codeparrot-small', 'temp': 1.0, 'len': 512, 'k': 21}
+    size = 1200 * 1000
     generated_folder = '{}-temp{}-len{}-k{}'.format(config['model'], config['temp'], config['len'], config['k'])
 
 
-    log_dir = os.path.join(root_dir, 'log/save/', generated_folder)
+    log_dir = os.path.join(root_dir, 'log/save/', generated_folder, str(size))
     stats_path = os.path.join(log_dir, 'stats')
     os.makedirs(stats_path, exist_ok=True)
 
@@ -26,7 +28,7 @@ if __name__ == '__main__':
     memorization = {}
     memorization_path = os.path.join(stats_path, 'memorization.json')
 
-    for log in os.listdir(log_dir):
+    for log in tqdm(os.listdir(log_dir)):
         log_path = os.path.join(log_dir, log)
         if not log.endswith('.log'):
             continue
