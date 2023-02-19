@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 import numpy as np
+import multiprocessing
 
 # set up the logger
 logger = logging.getLogger('user_actions')
@@ -76,15 +77,26 @@ if __name__ == '__main__':
     files = os.listdir(seperate_path)
     logger.info("Found {} files".format(len(files)))
 
-
     # store in chunks of 200k
     chunk_size = 200000
     num_of_chunks = int(np.ceil(len(files) / chunk_size)) - 1
     logger.info("Start storing {} chunks".format(num_of_chunks))
-    for i in range(num_of_chunks):
-        start = i * chunk_size
-        end =(i + 1) * chunk_size
-        store(result_path, seperate_path, files, start, end)
+    mulprocess = True
+    if mulprocess:
+        processes = []
+        for i in range(num_of_chunks):
+            start = i * chunk_size
+            end =(i + 1) * chunk_size
+            p = multiprocessing.Process(target=store, args=(result_path, seperate_path, files, start, end))
+            p.start()
+            processes.append(p)
+        for p in processes:
+            p.join()
+    else:
+        for i in range(num_of_chunks):
+            start = i * chunk_size
+            end =(i + 1) * chunk_size
+            store(result_path, seperate_path, files, start, end)
 
 
 
