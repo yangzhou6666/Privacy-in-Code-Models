@@ -6,6 +6,7 @@ from tqdm import tqdm
 import hashlib
 import json
 import logging
+import numpy as np
 
 # set up the logger
 logger = logging.getLogger('user_actions')
@@ -24,36 +25,23 @@ def parse_arguments():
 
     return parser.parse_args()
 
-def store(result_path, seperate_path, files, size):
+def store(result_path, seperate_path, files, start, end):
     # merge all the files into one
+    assert start <= end, "start should be smaller than end"
+    assert start < len(files) and end < len(files), "start and end should be smaller than the number of files"
+
+    size = end - start + 1
+    # path to store the merged file
+    merged_file_path = os.path.join(result_path, 'all_{}-{}'.format(start, end))
+    logger.info("Start merging files from {} to {}".format(start, end))
+    
     curser = 0
-    
-    
-    size = min(size, len(files))
-    print(os.path.join(result_path, 'all_{}'.format(size)))
+    map = {}
 
-    prior_size = size - 100 * 1000
-    prior_path = os.path.join(result_path, 'all_{}'.format(prior_size))
-    if os.path.exists(prior_path):
-        logger.info("Reuse the prior file: {}".format(prior_path))
-    else:
-        logger.info("Prior file does not exist, start from scratch")
-        raise NotImplementedError
-    
-    # load map information
-    with open(os.path.join(result_path, 'map_{}.json'.format(prior_size)), 'r') as f:
-        map = json.load(f)
-
-    with open(os.path.join(result_path, 'all_{}'.format(size)), 'w') as f:
-        # move content in prior_path to the new file
-        with open(prior_path, 'r') as pf:
-            content = pf.readlines()
-            for line in content:
-                f.write(line)
-
-            curser = len(content)
+    with open(merged_file_path, 'w') as f:
+        logger.info("Start writing to {}".format(merged_file_path))
         
-        for file in tqdm(range(prior_size, size)):
+        for file in tqdm(range(start, end)):
             file = str(file + 1)
             # jsut to make sure that the file is stored in the right order
             with open(os.path.join(seperate_path, file), 'r') as f2:
@@ -77,10 +65,8 @@ def store(result_path, seperate_path, files, size):
                 curser = curser + num_of_line - 1
 
     # store map into json file
-    with open(os.path.join(result_path, 'map_{}.json'.format(size)), 'w') as f:
+    with open(os.path.join(result_path, 'map_{}-{}.json'.format(start, end)), 'w') as f:
         json.dump(map, f)
-
-    logger.info("Merged file is saved to {}".format(os.path.join(result_path, 'all')))
 
 if __name__ == '__main__':
     args = parse_arguments()
@@ -90,9 +76,15 @@ if __name__ == '__main__':
     files = os.listdir(seperate_path)
     logger.info("Found {} files".format(len(files)))
 
-    # store 1100k to 1200k, step 100k
-    for i in range(11, 13):
-        store(result_path, seperate_path, files, i * 1000 * 100)
+
+    # store in chunks of 200k
+    chunk_size = 200000
+    num_of_chunks = int(np.ceil(len(files) / chunk_size)) - 1
+    logger.info("Start storing {} chunks".format(num_of_chunks))
+    for i in range(num_of_chunks):
+        start = i * chunk_size
+        end =(i + 1) * chunk_size
+        store(result_path, seperate_path, files, start, end)
 
 
 
