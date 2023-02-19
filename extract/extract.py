@@ -19,7 +19,6 @@ from tqdm import tqdm
 
 
 
-
 def get_model_and_tokenizer(model_name):
     print("Loading model {} ...".format(model_name))
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -34,9 +33,8 @@ def get_model_and_tokenizer(model_name):
     print("Model {} is loaded.".format(model_name))
     return tokenizer, model
 
-def save_samples(path_to_save: str, text:str):
-    start_id = len(os.listdir(path_to_save))
-    with open(os.path.join(path_to_save, str(start_id+1)), 'w') as f:
+def save_samples(path_to_save: str, text:str, file_id):
+    with open(os.path.join(path_to_save, str(file_id)), 'w') as f:
         f.write(text)
     
 
@@ -60,6 +58,7 @@ def main():
     
     
     samples = []
+    existing_count = len(os.listdir(path_to_save))
 
     num_batches = int(np.ceil(args.N / args.batch_size))
 
@@ -88,7 +87,8 @@ def main():
             texts = tokenizer.batch_decode(output_sequences, skip_special_tokens=True)
         
         for text in texts:
-            save_samples(path_to_save, text)
+            existing_count += 1
+            save_samples(path_to_save, text, existing_count)
             # store the results
 
 
