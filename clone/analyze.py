@@ -5,18 +5,52 @@ import logging
 import json
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import multiprocessing
+
 
 logging.basicConfig(level = logging.INFO,format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
+def process_file(log_path):
+    memorization = {}
+    data = None
+    with open(log_path, 'r') as f:
+        logger.info("Analyzing {}".format(log_path))
+        lines = f.readlines()
+        for line in lines:
+            if 'duplicate lines with fingerprint' in line:
+                # store the previous data
+                if data:
+                    if data['extract'] > 0 and data['train'] > 0:
+                        # only store memorized data
+                        memorization[fingerprint] = data
+
+                # update the information
+                suffix = line.split('fingerprint ')[1]
+                fingerprint = suffix.split(' in')[0]
+                prefix = line.split(' duplicate')[0]
+                len = int(prefix.split('Found ')[1])
+
+                try:
+                    data = memorization[fingerprint]
+                except:
+                    data = {'train': 0, 'extract': 0, "len": len}
+
+            # analyzing the clone information
+            if 'clone' in line:
+                data['train'] += 1
+            if 'extract' in line:
+                data['extract'] += 1
+    
+    return memorization
 
 if __name__ == '__main__':
     root_dir = './'
 
     # from which model the results to be analyzed
     config = {'model': 'codeparrot/codeparrot-small', 'temp': 1.0, 'len': 512, 'k': 21}
-    size = 1200 * 1000
+    size = 200 * 1000
     generated_folder = '{}-temp{}-len{}-k{}'.format(config['model'], config['temp'], config['len'], config['k'])
 
 
@@ -25,47 +59,30 @@ if __name__ == '__main__':
     os.makedirs(stats_path, exist_ok=True)
 
 
-    memorization = {}
+    memorizations = []
     memorization_path = os.path.join(stats_path, 'memorization.json')
 
-    for log in tqdm(os.listdir(log_dir)):
-        log_path = os.path.join(log_dir, log)
-        if not log.endswith('.log'):
-            continue
-        data = None
-        
-        with open(log_path, 'r') as f:
-            logger.info("Analyzing {}".format(log_path))
-            lines = f.readlines()
-            for line in lines:
-                if 'duplicate lines with fingerprint' in line:
-                    # store the previous data
-                    if data:
-                        if data['extract'] > 0 and data['train'] > 0:
-                            # only store memorized data
-                            memorization[fingerprint] = data
+    logs = [os.path.join(log_dir, log) for log in os.listdir(log_dir) if log.endswith('.log')]
+    
+    # multiprocessing
+    with multiprocessing.Pool() as pool:
+        for result in pool.map(process_file, logs):
+            memorizations.append(result)
+    
+    
+    # merge the memorizations
+    memorization = {}
+    for m in memorizations:
+        for fingerprint in m:
+            try:
+                memorization[fingerprint]['train'] += m[fingerprint]['train']
+                memorization[fingerprint]['extract'] += m[fingerprint]['extract']
+            except:
+                memorization[fingerprint] = m[fingerprint]
 
-                    # update the information
-                    suffix = line.split('fingerprint ')[1]
-                    fingerprint = suffix.split(' in')[0]
-                    prefix = line.split(' duplicate')[0]
-                    len = int(prefix.split('Found ')[1])
-
-                    try:
-                        data = memorization[fingerprint]
-                    except:
-                        data = {'train': 0, 'extract': 0, "len": len}
-
-                # analyzing the clone information
-                if 'clone' in line:
-                    data['train'] += 1
-                if 'extract' in line:
-                    data['extract'] += 1
-
-            # store as json
-            with open(memorization_path, 'w') as f:
-                json.dump(memorization, f, indent=4)
-        # break
+    # store as json
+    with open(memorization_path, 'w') as f:
+        json.dump(memorization, f, indent=4)
 
     '''Analyze the memorization'''
 
