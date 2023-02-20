@@ -45,6 +45,18 @@ def process_file(log_path):
     
     return memorization
 
+
+def merge_memorizations(memorizations):
+    memorization = {}
+    for m in memorizations:
+        for fingerprint in m:
+            try:
+                memorization[fingerprint]['train'] += m[fingerprint]['train']
+                memorization[fingerprint]['extract'] += m[fingerprint]['extract']
+            except:
+                memorization[fingerprint] = m[fingerprint]
+    return memorization
+
 if __name__ == '__main__':
     root_dir = './'
 
@@ -71,14 +83,7 @@ if __name__ == '__main__':
     
     
     # merge the memorizations
-    memorization = {}
-    for m in memorizations:
-        for fingerprint in m:
-            try:
-                memorization[fingerprint]['train'] += m[fingerprint]['train']
-                memorization[fingerprint]['extract'] += m[fingerprint]['extract']
-            except:
-                memorization[fingerprint] = m[fingerprint]
+    memorization = merge_memorizations(memorizations)
 
     # store as json
     with open(memorization_path, 'w') as f:
