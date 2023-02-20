@@ -61,29 +61,46 @@ if __name__ == '__main__':
     root_dir = './'
 
     # from which model the results to be analyzed
-    config = {'model': 'codeparrot/codeparrot-small', 'temp': 1.0, 'len': 512, 'k': 21}
-    size = 200 * 1000
+    config = {'model': 'codeparrot/codeparrot-small', 'temp': 1.0, 'len': 512, 'k': 22}
     generated_folder = '{}-temp{}-len{}-k{}'.format(config['model'], config['temp'], config['len'], config['k'])
 
-
-    log_dir = os.path.join(root_dir, 'log/save/', generated_folder, str(size))
-    stats_path = os.path.join(log_dir, 'stats')
-    os.makedirs(stats_path, exist_ok=True)
-
+    step = 2 # * 100000
+    start = 0
+    end = 20 # * 100000
+    # process in chunks
 
     memorizations = []
-    memorization_path = os.path.join(stats_path, 'memorization.json')
+    previous_memorizations = {}
+    
+    for size in range(start, end, step):
+        _start = size * 100000
+        _end = (size + step) * 100000
+        log_dir = os.path.join(root_dir, 'log/save/', generated_folder, "{}-{}".format(_start, _end))
 
-    logs = [os.path.join(log_dir, log) for log in os.listdir(log_dir) if log.endswith('.log')]
+        stats_path = os.path.join(log_dir, 'stats')
+        memorization_path = os.path.join(stats_path, 'memorization.json')
+
+        os.makedirs(stats_path, exist_ok=True)
+
+        logs = [os.path.join(log_dir, log) for log in os.listdir(log_dir) if log.endswith('.log')]
+        
+        # multiprocessing
+        with multiprocessing.Pool() as pool:
+            for result in pool.map(process_file, logs):
+                memorizations.append(result)
     
-    # multiprocessing
-    with multiprocessing.Pool() as pool:
-        for result in pool.map(process_file, logs):
-            memorizations.append(result)
-    
-    
-    # merge the memorizations
-    memorization = merge_memorizations(memorizations)
+        # merge the memorizations
+        memorization = merge_memorizations(memorizations)
+        previous_memorizations = merge_memorizations([previous_memorizations, memorization])
+
+        # count the number of unique fingerprints
+        count = 0
+        for fingerprint in previous_memorizations:
+            count += 1
+        logger.info("Number of unique fingerprints: {}".format(count))
+
+
+    exit()
 
     # store as json
     with open(memorization_path, 'w') as f:
