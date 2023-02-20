@@ -11,9 +11,13 @@ def run_command(command):
     output, error = process.communicate()
     return (output, error)
 
+def save_output(output, file_path):
+    with open(file_path, "w") as f:
+        f.write(output)
+
 if __name__ == '__main__':
     root_dir = './'
-    config = {'model': 'codeparrot/codeparrot-small', 'temp': 1.0, 'len': 512, 'k':21}
+    config = {'model': 'codeparrot/codeparrot-small', 'temp': 1.0, 'len': 512, 'k':22}
 
     generated_folder = '{}-temp{}-len{}-k{}'.format(config['model'], config['temp'], config['len'], config['k'])
     
@@ -22,9 +26,9 @@ if __name__ == '__main__':
 
 
 
-    step = 2 # 2 * 100000
-    start = 0
-    end = 20 # 20 * 100000
+    step = 2 # * 100000
+    start = 4
+    end = 20 # * 100000
     # process in chunks
     for size in range(start, end, step):
         _start = size * 100000
@@ -40,9 +44,7 @@ if __name__ == '__main__':
         commands = []
         for data in os.listdir(data_dir):
             data_path = os.path.join(data_dir, data)
-            commands.append(['java', '-jar', tool_path, file_path])
-            # commands.append(['java', '-jar', tool_path, data_path, generated_path])
-            # commands.append(['java', '-jar', tool_path, '/mnt/hdd1/zyang/Privacy-in-Code-Models/extract/utils.py'])
+            commands.append(['java', '-jar', tool_path, data_path, file_path])
 
         logger.info("Batch {}-{} started".format(_start, _end))
         
@@ -57,9 +59,16 @@ if __name__ == '__main__':
         output_strs = [output.decode("utf-8") for output, error in outputs]
         error_strs = [error.decode("utf-8") for output, error in outputs]
 
-        # save output to files
-        for i, output_str in enumerate(output_strs):
-            with open(os.path.join(log_dir, "{}.log".format(i)), "w") as f:
-                f.write(output_str)
+        # save output to files in parallel
+        logger.info("Saving output to {}".format(log_dir))
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = [executor.submit(save_output, output_str, 
+                os.path.join(log_dir, "{}.log".format(i))) for i, output_str in enumerate(output_strs)]
+            
+        # free memory
+        del outputs
+        del output_strs
+        del error_strs
+
 
         logger.info("Batch {}-{} finished".format(_start, _end))
