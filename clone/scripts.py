@@ -1,6 +1,10 @@
 import os
 import subprocess
 import concurrent.futures
+import logging
+
+logging.basicConfig(level = logging.INFO,format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def run_command(command):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -39,7 +43,8 @@ if __name__ == '__main__':
             commands.append(['java', '-jar', tool_path, file_path])
             # commands.append(['java', '-jar', tool_path, data_path, generated_path])
             # commands.append(['java', '-jar', tool_path, '/mnt/hdd1/zyang/Privacy-in-Code-Models/extract/utils.py'])
-            print(commands[-1])
+
+        logger.info("Batch {}-{} started".format(_start, _end))
         
         # launch the commands in parallel using a process pool
         with concurrent.futures.ProcessPoolExecutor() as executor:
