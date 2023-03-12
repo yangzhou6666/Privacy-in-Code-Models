@@ -61,17 +61,18 @@ if __name__ == '__main__':
     root_dir = './'
 
     # from which model the results to be analyzed
-    config = {'model': 'codeparrot/codeparrot-small', 'temp': 1.0, 'len': 512, 'k': 22}
+    config = {'model': 'codeparrot/codeparrot-small', 'temp': 1.0, 'len': 512, 'k': 24}
     generated_folder = '{}-temp{}-len{}-k{}'.format(config['model'], config['temp'], config['len'], config['k'])
 
     step = 2 # * 100000
     start = 0
-    end = 20 # * 100000
+    end = 32 # * 100000
     # process in chunks
 
     memorizations = []
     previous_memorizations = {}
     
+    # collect the memorization data for each chunk
     for size in range(start, end, step):
         _start = size * 100000
         _end = (size + step) * 100000
@@ -91,6 +92,12 @@ if __name__ == '__main__':
     
         # merge the memorizations
         memorization = merge_memorizations(memorizations)
+        # save as json
+        logger.info("Saving memorization to {}".format(memorization_path))
+        with open(memorization_path, 'w') as f:
+            json.dump(memorization, f, indent=4)
+
+        # merge with previous memorizations
         previous_memorizations = merge_memorizations([previous_memorizations, memorization])
 
         # count the number of unique fingerprints
@@ -98,7 +105,6 @@ if __name__ == '__main__':
         for fingerprint in previous_memorizations:
             count += 1
         logger.info("Number of unique fingerprints: {}".format(count))
-
 
     exit()
 
