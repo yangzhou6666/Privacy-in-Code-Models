@@ -16,3 +16,4 @@ extract/results/
 clone/.data_cache/
 clone/save/
 log/
+*.png
