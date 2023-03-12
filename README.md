@@ -65,12 +65,39 @@ You can also skip this step and download models as needed.
 cd extract
 
 python extract.py \
-    --model Salesforce/codegen-350M-multi \
-    --N 50000 \
-    --batch-size 100 \
+    --model bigcode/santacoder \
+    --N 400000 \
+    --batch-size 400 \
+    --seq_len 256 \
+    --top_k 20 \
+    --gpu_id 0 &
+
+python extract.py \
+    --model codeparrot/codeparrot \
+    --N 400000 \
+    --batch-size 70 \
+    --seq_len 256 \
+    --top_k 21 \
+    --gpu_id 1 &
+
+
+python extract.py \
+    --model codeparrot/codeparrot-small \
+    --N 20000 \
+    --batch-size 200 \
     --seq_len 512 \
-    --top_k 5 \
-    --gpu_id 4 &
+    --top_k 30 \
+    --gpu_id 2 &
+
+
+python extract.py \
+    --model codeparrot/codeparrot-small \
+    --N 20000 \
+    --batch-size 200 \
+    --seq_len 512 \
+    --top_k 35 \
+    --gpu_id 3 &
+
 
 
 python extract.py \
