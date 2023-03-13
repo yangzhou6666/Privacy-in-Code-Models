@@ -10,6 +10,8 @@ import logging
 from tqdm import tqdm
 import argparse
 import json
+from args import victim_maps
+VICTIM_MODE2MODEL_MAP = victim_maps()
 logger = logging.getLogger(__name__)
 
 def get_args():
@@ -26,6 +28,11 @@ def get_args():
         help="Set this flag if you are using an uncased model."
     )
     parser.add_argument(
+        '--use_tree_component' ,
+        action='store_true',
+        help='whether to use tree component'
+    )
+    parser.add_argument(
         "--data_dir",
         type=str,
         default='../dataset',
@@ -39,7 +46,14 @@ def get_args():
     parser.add_argument(
         "--surrogate_model",
         type=str,
-        choices=['gpt2','microsoft/CodeGPT-small-py','microsoft/CodeGPT-small-java',
+        choices=['gpt2','microsoft/CodeGPT-small-py','microsoft/CodeGPT-small-java','rnn','transformer',
+                'micrsoft/CodeGPT-small-py-adaptedGPT2','microsoft/CodeGPT-small-java-adaptedGPT2']
+    )
+    parser.add_argument(
+        "--victim_model",
+        type=str,
+        default='micrsoft/CodeGPT-small-py-adaptedGPT2',
+        choices=['gpt2','microsoft/CodeGPT-small-py','microsoft/CodeGPT-small-java','rnn','transformer',
                 'micrsoft/CodeGPT-small-py-adaptedGPT2','microsoft/CodeGPT-small-java-adaptedGPT2']
     )
     parser.add_argument(
@@ -128,7 +142,7 @@ def get_args():
     )
     parser.add_argument(
         "--mode",
-        choices=['surrogate','victim'],
+        # choices=['surrogate','victim'],
         type=str,
     )
 
@@ -159,11 +173,20 @@ def evaluate(args,model,dataloader,device):
     acc = 0
     for batch in tqdm(dataloader, desc="Evaluating"):
         with torch.no_grad():
-            inputs = {'input_ids':      batch['input_ids'].to(device),
-                      'attention_mask': batch['attention_mask'].to(device),
-                      }
-            labels = batch['label'].to(device)
-            logits = model(**inputs)[0]
+            if args.use_tree_component:
+                inputs = {'title_ids': batch['input_ids'].to(device),
+                          'title_attention_mask': batch['input_mask'].to(device),
+                          'text_ids': batch['groundtruth_ids'].to(device),
+                          'text_attention_mask': batch['groundtruth_mask'].to(device),
+                          'code_ids': batch['prediction_ids'].to(device),
+                          'code_attention_mask': batch['prediction_mask'].to(device),
+                        }
+                logits = model(**inputs)
+            else:
+                inputs = {'input_ids': batch['input_ids'].to(device),
+                        'attention_mask': batch['input_mask'].to(device)}
+                logits = model(**inputs)[0]
+            labels = batch['labels'].to(device)
             loss_fct = torch.nn.CrossEntropyLoss()
             e_l = loss_fct(logits.view(-1, 2), labels.view(-1))
             eval_loss += e_l.mean().item()
@@ -176,7 +199,7 @@ def evaluate(args,model,dataloader,device):
             
 def main():
     args = get_args()
-    
+    args.mode = VICTIM_MODE2MODEL_MAP[args.mode]
     
     # utils
     device = torch.device("cuda" if torch.cuda.is_available()  else "cpu")
@@ -197,18 +220,23 @@ def main():
     special_token = get_special_tokens(args.lit_file)
     tokenizer = AutoTokenizer.from_pretrained("microsoft/codebert-base",do_lower_case=True,additional_special_tokens=special_token)
     model = AutoModelForSequenceClassification.from_pretrained(args.classifier_model_path,num_labels=2) #label=0/1
-    logger.info(f"[model loaded]: {args.classifier_model_path}")
     model.resize_token_embeddings(len(tokenizer))
     model.to(device)
+    logger.info("---------------------------------")
+    model_name = args.victim_model.split('/')[-1]
+    logger.info(f"[surrogate model loaded]: {args.classifier_model_path}")
+    logger.info("[victim model]: "+ f"{model_name}_{args.mode}")
+    logger.info("[classifier model]: BERT-based")
+    logger.info("---------------------------------")
     
     # data prepare
     data_path = os.path.join(args.data_dir,args.lang,args.surrogate_model,args.sample_ratio)
-    if not os.path.exists(os.path.join(data_path,'test.json')):
+    if not os.path.exists(os.path.join(data_path,f'test_{model_name}_{args.mode}.json')):
         classifier_train, classifier_test = prepare_data(args)
         logger.info(f"[data prepared]: length :{len(classifier_train)} {len(classifier_test)}")
         keep_test_data(args,classifier_train,classifier_test)
     # 其中train.json和dev.json是用于训练和测试的classifier的数据，test.json是用于验证真实世界情况的数据
-    test_dataset = ClassificationDataset(args,file_type='test',tokenizer=tokenizer)
+    test_dataset = ClassificationDataset(args,file_type=f'test_{model_name}_{args.mode}',tokenizer=tokenizer)
     # test_dataset = ClassificationDataset(args,file_type='test',tokenizer=tokenizer)
 
     batch_size = args.batch_size * args.gradient_accumulation_steps
@@ -222,7 +250,7 @@ def main():
     test_loss,val_acc  =evaluate(args, model, test_dataloader,device=device)
     
     
-    logger.info('[best_acc]: {}'.format(val_acc))
+    logger.info('[best_acc]: {}\n\n'.format(val_acc))
 
 if __name__ == '__main__':
     main()

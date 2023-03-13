@@ -12,13 +12,20 @@ def get_data(path,file):
 
 # 把数据中的gt和prediction提取出来
 def prepare_data(args):
-    model_name = args.surrogate_model.split('/')[-1]
-    if args.mode == 'victim':
-        model_name = "CodeGPT-small-java-adaptedGPT2"
+    # if args.mode == 'victim':
+    #     model_name = "CodeGPT-small-java-adaptedGPT2"
+    if 'surrogate' in args.mode:
+        base_mode  = 'surrogate'
+        model_name = args.surrogate_model.split('/')[-1]
+    elif 'victim' in args.mode:
+        base_mode = 'victim'
+        model_name = args.victim_model.split('/')[-1]
+    else:
+        raise
     predictions_train = get_data(args.prediction_data_folder_path,f'train_{model_name}_{args.mode}_infer.txt')
     predictions_test = get_data(args.prediction_data_folder_path,f'test_{model_name}_{args.mode}_infer.txt')
-    train = get_data(args.prediction_data_folder_path,f'train_{args.mode}.json')
-    test = get_data(args.prediction_data_folder_path,f'test_{args.mode}.json')
+    train = get_data(args.prediction_data_folder_path,f'train_{base_mode}.json')
+    test = get_data(args.prediction_data_folder_path,f'test_{base_mode}.json')
 
     assert len(predictions_train) == len(train)
     assert len(predictions_test) == len(test)
@@ -81,7 +88,8 @@ def keep_test_data(args,classifier_train,classifier_test):
     saved_dir = os.path.join(args.data_dir,args.lang,args.surrogate_model,args.sample_ratio)
     if not os.path.exists(saved_dir):
         os.makedirs(saved_dir)
-    with open(os.path.join(saved_dir,'test.json'),'w') as f:
+    model_name = args.victim_model.split('/')[-1]
+    with open(os.path.join(saved_dir,f'test_{model_name}_{args.mode}.json'),'w') as f:
         for i in range(len(classifier_train)):
             classifier_test[i]['label'] = 0
             classifier_train[i]['label'] = 1
@@ -95,8 +103,12 @@ class ClassificationDataset(Dataset):
     def __init__(self,args,file_type,tokenizer) -> None:
         super().__init__()
         saved_dir = os.path.join(args.data_dir,args.lang,args.surrogate_model,args.sample_ratio)
-        if os.path.exists(os.path.join(saved_dir,file_type+'.pickle')):
-            with open(os.path.join(saved_dir,file_type+'.pickle'),'rb') as f:
+        if args.use_tree_component:
+            suffix = '_PTM4_.pickle'
+        else:
+            suffix = '.pickle'
+        if os.path.exists(os.path.join(saved_dir,file_type+suffix)):
+            with open(os.path.join(saved_dir,file_type+suffix),'rb') as f:
                 self.data = pickle.load(f)
         else:
             with open(os.path.join(saved_dir,file_type+'.json'),'r') as f:
@@ -112,30 +124,38 @@ class ClassificationDataset(Dataset):
 
                 gt = d['gt']
                 gt = tokenizer.encode(gt,add_special_tokens=False)
-                gt = gt[:args.prediction_length]
+                gt = gt[:args.prediction_length-2]
 
                 prediction = d['prediction']
                 prediction = tokenizer.encode(prediction,add_special_tokens=False)
-                prediction = prediction[:args.prediction_length]
+                prediction = prediction[:args.prediction_length-2]
 
                 self.data.append({
-                    'input':[tokenizer.cls_token_id]+inputs+[tokenizer.sep_token_id]+gt+[tokenizer.sep_token_id]+prediction+[tokenizer.sep_token_id]+[tokenizer.pad_token_id]*(args.total_length-len(inputs)-len(gt)-len(prediction)-4),
+                    'input_ids':[tokenizer.cls_token_id] + inputs + [tokenizer.sep_token_id] +[tokenizer.pad_token_id]*(args.total_length-len(inputs)-2),
+                    'groundtruth_ids':[tokenizer.cls_token_id] + gt + [tokenizer.sep_token_id]+[tokenizer.pad_token_id]*(args.prediction_length-len(gt)-2),
+                    'prediction_ids':[tokenizer.cls_token_id] + prediction + [tokenizer.sep_token_id]+[tokenizer.pad_token_id]*(args.prediction_length-len(prediction)-2),
                     'label':d['label']
                 }
                 )
-            with open(os.path.join(saved_dir,file_type+'.pickle'),'wb') as f:
+            with open(os.path.join(saved_dir,file_type+suffix),'wb') as f:
                 pickle.dump(self.data,f)
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, item):
-        return self.data[item]['input'],self.data[item]['label']
+        return self.data[item]['input_ids'],self.data[item]['groundtruth_ids'],self.data[item]['prediction_ids'],self.data[item]['label']
 
 def ClassificationDataset_collate_fn(batch,padding_value=0):
     inputs = [b[0] for b in batch]
-    labels = [b[1] for b in batch]
+    gt = [b[1] for b in batch]
+    pred = [b[2] for b in batch]
+    labels = [b[3] for b in batch]
     return {
         "input_ids":torch.tensor(inputs).long(),
-        "label":torch.tensor(labels).long(),
-        "attention_mask":(torch.tensor(inputs)!=padding_value).long(),
+        "labels":torch.tensor(labels).long(),
+        "input_mask":(torch.tensor(inputs)!=padding_value).long(),
+        "groundtruth_ids":torch.tensor(gt).long(),
+        "prediction_ids":torch.tensor(pred).long(),
+        "groundtruth_mask":(torch.tensor(gt)!=padding_value).long(),
+        "prediction_mask":(torch.tensor(pred)!=padding_value).long(),
     }

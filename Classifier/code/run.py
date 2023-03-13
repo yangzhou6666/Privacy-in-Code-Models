@@ -1,4 +1,5 @@
 from dataset import ClassificationDataset,prepare_data,divide_data,ClassificationDataset_collate_fn
+from model import TBertT
 import os
 from transformers import AutoTokenizer,AutoModelForSequenceClassification
 from torch.utils.data import DataLoader
@@ -39,8 +40,8 @@ def get_args():
     parser.add_argument(
         "--surrogate_model",
         type=str,
-        choices=['gpt2','microsoft/CodeGPT-small-py','microsoft/CodeGPT-small-java',
-                'micrsoft/CodeGPT-small-py-adaptedGPT2','microsoft/CodeGPT-small-java-adaptedGPT2']
+        choices=['gpt2','microsoft/CodeGPT-small-py','microsoft/CodeGPT-small-java','transformer',
+                'micrsoft/CodeGPT-small-py-adaptedGPT2','microsoft/CodeGPT-small-java-adaptedGPT2','rnn']
     )
     parser.add_argument(
         "--sample_ratio",
@@ -126,6 +127,16 @@ def get_args():
         default=100,
         help="evaluate every evaluate_steps steps"
     )
+    parser.add_argument(
+        "--mode",
+        default='surrogate',
+        type=str,
+    )
+    parser.add_argument(
+        '--use_tree_component' ,
+        action='store_true',
+        help='whether to use tree component'
+    )
 
     
     args = parser.parse_args()
@@ -154,11 +165,20 @@ def evaluate(args,model,dataloader,device):
     acc = 0
     for batch in tqdm(dataloader, desc="Evaluating"):
         with torch.no_grad():
-            inputs = {'input_ids':      batch['input_ids'].to(device),
-                      'attention_mask': batch['attention_mask'].to(device),
-                      }
-            labels = batch['label'].to(device)
-            logits = model(**inputs)[0]
+            if args.use_tree_component:
+                inputs = {'title_ids': batch['input_ids'].to(device),
+                          'title_attention_mask': batch['input_mask'].to(device),
+                          'text_ids': batch['groundtruth_ids'].to(device),
+                          'text_attention_mask': batch['groundtruth_mask'].to(device),
+                          'code_ids': batch['prediction_ids'].to(device),
+                          'code_attention_mask': batch['prediction_mask'].to(device),
+                        }
+                logits = model(**inputs)
+            else:
+                inputs = {'input_ids': batch['input_ids'].to(device),
+                        'attention_mask': batch['input_mask'].to(device)}
+                logits = model(**inputs)[0]
+            labels = batch['labels'].to(device)
             loss_fct = torch.nn.CrossEntropyLoss()
             e_l = loss_fct(logits.view(-1, 2), labels.view(-1))
             eval_loss += e_l.mean().item()
@@ -171,7 +191,7 @@ def evaluate(args,model,dataloader,device):
             
 def main():
     args = get_args()
-    args.mode = 'surrogate'
+    # args.mode = 'surrogate'
     
     
     # utils
@@ -194,6 +214,10 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(args.classifier_model_path,do_lower_case=True,additional_special_tokens=special_token)
     model = AutoModelForSequenceClassification.from_pretrained(args.classifier_model_path,num_labels=2) #label=0/1
     model.resize_token_embeddings(len(tokenizer))
+    if args.use_tree_component:
+        model = TBertT(model.config,args.classifier_model_path,num_class=2)
+        model.resize_token_embeddings(len(tokenizer))
+
     model.to(device)
     
     # data prepare
@@ -231,18 +255,31 @@ def main():
     logger.info("  Total train batch size (w. parallel, distributed & accumulation) = %d", batch_size)
     logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
     logger.info("  Total optimization steps = %d", t_total)
-    
+    logger.info("  seed = %d", args.seed)
     best_acc = 0.0
     model.zero_grad()
     for epoch in range(args.num_train_epochs):
         model.train()
         total_loss = 0.0
         for step, batch in tqdm(enumerate(train_dataloader),total=len(train_dataloader)):
-            inputs = {'input_ids': batch['input_ids'].to(device),
-                      'attention_mask': batch['attention_mask'].to(device),
-                      'labels': batch['label'].to(device)}
-            outputs = model(**inputs)
-            loss = outputs[0]
+            if args.use_tree_component:
+                inputs = {'title_ids': batch['input_ids'].to(device),
+                          'title_attention_mask': batch['input_mask'].to(device),
+                          'text_ids': batch['groundtruth_ids'].to(device),
+                          'text_attention_mask': batch['groundtruth_mask'].to(device),
+                          'code_ids': batch['prediction_ids'].to(device),
+                          'code_attention_mask': batch['prediction_mask'].to(device),
+                        }
+                outputs = model(**inputs)
+                targets = batch['labels'].to(device)
+                loss_fct = torch.nn.CrossEntropyLoss()
+                loss = loss_fct(outputs, targets)
+            else:
+                inputs = {'input_ids': batch['input_ids'].to(device),
+                        'attention_mask': batch['input_mask'].to(device),
+                        'labels': batch['label'].to(device)}
+                outputs = model(**inputs)
+                loss = outputs[0]
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
             loss.backward()

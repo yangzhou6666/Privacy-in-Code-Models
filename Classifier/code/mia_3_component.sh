@@ -15,7 +15,7 @@ do
 
 
 LANG=java    
-CLASSIFIER_SAVE_DICT=../classifier_save/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/
+CLASSIFIER_SAVE_DICT=../classifier_save/PTM3/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/
 PREDICTION_DATA_FOLDER_PATH=../../CodeCompletion-line/dataset/javaCorpus/${Percentage}/${SAMPLE_RATIO}/
 LITFILE=../dataset/javaCorpus/literals.json
 
@@ -33,7 +33,8 @@ python mia.py \
     --lit_file ${LITFILE} \
     --classifier_model_path ${CLASSIFIER_SAVE_DICT} \
     --weight_decay=0.01 \
-    --mode victim_${EPOCH}
+    --mode victim_${EPOCH} \
+    --use_tree_component 
 
 python naive_bayes.py \
     --classifier_save_dir ${CLASSIFIER_SAVE_DICT} \
