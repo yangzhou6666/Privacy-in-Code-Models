@@ -8,7 +8,7 @@
 Percentage=0.01
 
 
-for SAMPLE_RATIO in {5..5..10}
+for SAMPLE_RATIO in {10..20..10}
 do
 for EPOCH in 0
 do
