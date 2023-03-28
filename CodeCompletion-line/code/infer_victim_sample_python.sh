@@ -1,21 +1,16 @@
-export CUDA_VISIBLE_DEVICES=2
-MODEL=microsoft/CodeGPT-small-java-adaptedGPT2 #change model
-MASTER_PORT=92257 # modify
-MODE=victim # modify
-Percentage=0.01 # modify
+export CUDA_VISIBLE_DEVICES=1
+MODE=victim_sample_python # modify surrogate
 
+MASTER_PORT=95555 # modify
 LANG=java                       # set python for py150
 
 
-for SAMPLE_RATIO in {5..5..10}
-do
-
-DATADIR="../dataset/javaCorpus/${Percentage}/${SAMPLE_RATIO}/"
+DATADIR="/workspace/Privacy-in-Code-Models/Classifier/dataset/codesearchnet/"
 LITFILE=../dataset/javaCorpus/literals.json
-PRETRAINDIR="../../CodeCompletion-token/save/javaCorpus/${MODEL}/100/checkpoint-last"
-LOGFILE="completion_javaCorpus_${MODEL##*/}_${MODE}_eval.log"
+PRETRAINDIR="../../CodeCompletion-token/save/javaCorpus/microsoft/CodeGPT-small-java-adaptedGPT2/100/checkpoint-last"
+LOGFILE="completion_javaCorpus_eval_${SURROGATE_MODEL_NAME}_${SAMPLE_RATIO}_victim.log"
 
-python -u run.py \
+python -u run_lm.py \
         --data_dir=$DATADIR \
         --lit_file=$LITFILE \
         --langs=$LANG \
@@ -29,5 +24,5 @@ python -u run.py \
         --seed=42 \
         --MASTER_PORT $MASTER_PORT \
         --per_gpu_eval_batch_size 128 \
-        --mode $MODE 
-done
+        --mode $MODE \
+

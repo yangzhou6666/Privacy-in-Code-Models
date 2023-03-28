@@ -277,10 +277,10 @@ def split_train_victim(data_file,lang,sep_token,file_type,save_path,apperaed_id,
 
 if __name__ =='__main__':
     percentatge = 0.01
-    token_data_dir = f"../../../CodeCompletion-token/dataset/javaCorpus/token_completion/{str(percentatge)}"
+    token_data_dir = f"../../../CodeCompletion-token/dataset/javaCorpus/token_completion/"
     # model_name = 'gpt2'
     # model_name = model_name.split('/')[-1]
-    SAMPLE_RATIO=10
+    SAMPLE_RATIO=5
     if not os.path.exists(os.path.join(str(percentatge),str(SAMPLE_RATIO))):
         os.makedirs(os.path.join(str(percentatge),str(SAMPLE_RATIO)))
     saved_path = os.path.join(str(percentatge),str(SAMPLE_RATIO))

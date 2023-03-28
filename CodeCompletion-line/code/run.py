@@ -54,7 +54,9 @@ MODEL_CLASSES = {
     'openai-gpt': (OpenAIGPTConfig, OpenAIGPTLMHeadModel, OpenAIGPTTokenizer),
     'bert': (BertConfig, BertForMaskedLM, BertTokenizer),
     'roberta': (RobertaConfig, RobertaForMaskedLM, RobertaTokenizer),
-    'distilbert': (DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer)
+    'distilbert': (DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer),
+    "transformer": (GPT2Config, GPT2LMHeadModel, GPT2Tokenizer),
+
 }
 
 
@@ -554,6 +556,7 @@ def main():
     parser.add_argument('--generate_method',type=str,default='beam',choices=['beam','top-k'])
     parser.add_argument('--topk',type=int,default=50)
     parser.add_argument('--temperature',type=float,default=1.0)
+    
     pool = None
     args = parser.parse_args()
 
@@ -682,7 +685,6 @@ def main():
         else:
             eval_line_completion(args, model, tokenizer, file_type="test")
             eval_line_completion(args, model, tokenizer, file_type="train")
-
 
 if __name__ == "__main__":
     main()
