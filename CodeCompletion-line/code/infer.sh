@@ -1,14 +1,13 @@
-export CUDA_VISIBLE_DEVICES=1
-MODEL=rnn #change model
-SAMPLE_RATIO=10 # modify SAMPLE_RATIO
+export CUDA_VISIBLE_DEVICES=1 # modify
+MODEL=gpt2 #change model, # [microsoft/CodeGPT-small-java,microsoft/CodeGPT-small-java-adaptedGPT2,gpt2]
 MASTER_PORT=77777 # modify
-MODE=surrogate # modify
-Percentage=0.01 # modify
+MODE=surrogate 
+Percentage=0.01 
 
-LANG=java                       # set python for py150
+LANG=java                       
 
 
-for SAMPLE_RATIO in {5..5..10}
+for SAMPLE_RATIO in {10..20..10}
 do
 
 DATADIR="../dataset/javaCorpus/${Percentage}/${SAMPLE_RATIO}/"
@@ -23,7 +22,7 @@ python -u run.py \
         --output_dir=$DATADIR \
         --pretrain_dir=$PRETRAINDIR \
         --log_file=$LOGFILE \
-        --model_type=rnn \
+        --model_type=gpt2 \
         --block_size=1024 \
         --eval_line \
         --logging_steps=100 \
