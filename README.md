@@ -21,7 +21,11 @@ Example:
 ```
 docker run --name=privacy-code --gpus all -it -v /mnt/hdd1/zyang/Privacy-in-Code-Models:/Privacy-in-Code-Models privacy-code:latest
 ```
-
+## Update and install the dependencies
+```
+apt-get update
+apt-get install wget
+```
 
 # Code Completion on Tokens 
 
@@ -30,3 +34,7 @@ Refer to `CodeCompletion-token/README.md` for instructions.
 # Code Completion on Lines 
 
 Refer to `CodeCompletion-line/README.md` for instructions.
+
+# Classifier 
+
+Refer to `Classifier/README.md` for instructions.
