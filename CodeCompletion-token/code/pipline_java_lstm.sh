@@ -1,18 +1,19 @@
 LANG=java                       # set python for py150
 
 LITFILE=../dataset/javaCorpus/literals.json
-OUTPUTDIR=../save/javaCorpus
+
 PRETRAINDIR=gpt2  # microsoft/CodeGPT-small-py for py150
 PER_NODE_GPU=1       # modify YOUR_GPU_NUM
 
-MASTER_PORT=90927 #每次跑这个都要改这个
-export CUDA_VISIBLE_DEVICES=1 #指定GPU,每次都要改
+MASTER_PORT=64129 #每次跑这个都要改这个
+export CUDA_VISIBLE_DEVICES=3 #指定GPU,每次都要改
+Percentage=0.01
 
-
-for SAMPLE_RATIO in {5..5..10}
+for SAMPLE_RATIO in 5
 do
-LOGFILE="completion_javaCorpus_${PRETRAINDIR##*/}_${SAMPLE_RATIO}".log
-DATADIR=../dataset/javaCorpus/token_completion/
+LOGFILE="completion_javaCorpus_lstm_${SAMPLE_RATIO}".log
+DATADIR="../dataset/javaCorpus/token_completion/"
+OUTPUTDIR="../save/javaCorpus/"
 echo $LOGFILE
 # 训练时，sample_ratio设置为0.1，模拟BOB知道部分数据
 # python -m torch.distributed.launch --nproc_per_node=$PER_NODE_GPU run_lm.py \
@@ -21,9 +22,10 @@ python -u run_lm.py \
         --lit_file=$LITFILE \
         --langs=$LANG \
         --output_dir=$OUTPUTDIR \
-        --pretrain_dir=$PRETRAINDIR \
+        --tokenizer_dir=$PRETRAINDIR \
+        --config_dir=$PRETRAINDIR \
         --log_file=$LOGFILE \
-        --model_type=gpt2 \
+        --model_type=rnn \
         --block_size=1024 \
         --do_train \
         --gpu_per_node $PER_NODE_GPU \
