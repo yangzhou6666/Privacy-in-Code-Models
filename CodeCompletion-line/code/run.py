@@ -42,7 +42,8 @@ from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
                           GPT2Config, GPT2LMHeadModel, GPT2Tokenizer,
                           OpenAIGPTConfig, OpenAIGPTLMHeadModel, OpenAIGPTTokenizer,
                           RobertaConfig, RobertaForMaskedLM, RobertaTokenizer,
-                          DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer)
+                          DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer,
+                          AutoModelForCausalLM, AutoTokenizer,AutoConfig,T5ForConditionalGeneration,T5Tokenizer)
 from model import RNNModel
 
 
@@ -56,7 +57,8 @@ MODEL_CLASSES = {
     'roberta': (RobertaConfig, RobertaForMaskedLM, RobertaTokenizer),
     'distilbert': (DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer),
     "transformer": (GPT2Config, GPT2LMHeadModel, GPT2Tokenizer),
-
+    't5':(AutoConfig, T5ForConditionalGeneration, RobertaTokenizer), #codet5的tokenizer是roberta的
+    "orignal_t5":(AutoConfig, T5ForConditionalGeneration, T5Tokenizer)
 }
 
 
@@ -639,7 +641,11 @@ def main():
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     pretrained = args.pretrain_dir
     if pretrained:
-        tokenizer = tokenizer_class.from_pretrained(pretrained, do_lower_case=args.do_lower_case, sep_token='<EOL>', bos_token='<s>', eos_token='</s>', pad_token='<pad>', unk_token='<|UNKNOWN|>', additional_special_tokens=special_tokens)
+        if args.model_type == "orignal_t5":
+            tokenizer = tokenizer_class.from_pretrained(pretrained, do_lower_case=args.do_lower_case, sep_token='<EOL>', bos_token='<s>', eos_token='</s>', pad_token='<pad>', unk_token='<|UNKNOWN|>')
+            tokenizer.add_tokens(special_tokens)
+        else:
+            tokenizer = tokenizer_class.from_pretrained(pretrained, do_lower_case=args.do_lower_case, sep_token='<EOL>', bos_token='<s>', eos_token='</s>', pad_token='<pad>', unk_token='<|UNKNOWN|>', additional_special_tokens=special_tokens)
         if args.model_type == "rnn":
             model = model_class(len(tokenizer), 768, 768, 1)
             model_last = os.path.join(pretrained, 'model.pt')
