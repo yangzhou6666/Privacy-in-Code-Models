@@ -1,26 +1,27 @@
-LANG=java                       
+LANG=java 
+
 LITFILE=../dataset/javaCorpus/literals.json
-PRETRAINDIR=gpt2  
+OUTPUTDIR=../save/javaCorpus
+PRETRAINDIR=microsoft/CodeGPT-small-java-adaptedGPT2 
 PER_NODE_GPU=1       
 
-MASTER_PORT=55551 ##change every time
-export CUDA_VISIBLE_DEVICES=0 #specify GPU, change every time
+MASTER_PORT=90927 #change every time
+export CUDA_VISIBLE_DEVICES=1 #specify GPU, change every time
 
-for SAMPLE_RATIO in {10..20..10}
+
+for SAMPLE_RATIO in {100..100..10}
 do
-LOGFILE="completion_javaCorpus_tokenizer_transformers_${SAMPLE_RATIO}".log
-DATADIR="../dataset/javaCorpus/token_completion/"
-OUTPUTDIR="../save/javaCorpus/"
+LOGFILE="completion_javaCorpus_${PRETRAINDIR##*/}_${SAMPLE_RATIO}".log
+DATADIR=../dataset/javaCorpus/token_completion/
 echo $LOGFILE
 python -u run_lm.py \
         --data_dir=$DATADIR \
         --lit_file=$LITFILE \
         --langs=$LANG \
         --output_dir=$OUTPUTDIR \
-        --tokenizer_dir=$PRETRAINDIR \
-        --config_dir=$PRETRAINDIR \
+        --pretrain_dir=$PRETRAINDIR \
         --log_file=$LOGFILE \
-        --model_type=transformer \
+        --model_type=gpt2 \
         --block_size=1024 \
         --do_train \
         --gpu_per_node $PER_NODE_GPU \
@@ -38,5 +39,6 @@ python -u run_lm.py \
         --sample_ratio $SAMPLE_RATIO \
         --save_sample \
         --MASTER_PORT $MASTER_PORT
+
 
 done
