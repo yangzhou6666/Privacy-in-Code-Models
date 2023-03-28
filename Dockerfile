@@ -3,3 +3,4 @@ RUN pip install transformers==4.27.2
 RUN pip install fuzzywuzzy
 RUN pip install javalang==0.13.0
 RUN pip install scikit-learn
+RUN pip install sentencepiece
