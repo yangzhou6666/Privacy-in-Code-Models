@@ -280,16 +280,17 @@ if __name__ =='__main__':
     token_data_dir = f"../../../CodeCompletion-token/dataset/javaCorpus/token_completion/"
     # model_name = 'gpt2'
     # model_name = model_name.split('/')[-1]
-    SAMPLE_RATIO=5
-    if not os.path.exists(os.path.join(str(percentatge),str(SAMPLE_RATIO))):
-        os.makedirs(os.path.join(str(percentatge),str(SAMPLE_RATIO)))
-    saved_path = os.path.join(str(percentatge),str(SAMPLE_RATIO))
-    path = os.path.join(token_data_dir,f'train_{str(SAMPLE_RATIO)}.txt')
-    surrogate_train_num,apperaed_id = split_train_surrogate(path,'java',None,'train',saved_path)
+    SAMPLE_RATIO=[10,20]
+    for s in SAMPLE_RATIO:
+        if not os.path.exists(os.path.join(str(percentatge),str(s))):
+            os.makedirs(os.path.join(str(percentatge),str(s)))
+        saved_path = os.path.join(str(percentatge),str(s))
+        path = os.path.join(token_data_dir,f'train_{str(s)}.txt')
+        surrogate_train_num,apperaed_id = split_train_surrogate(path,'java',None,'train',saved_path)
 
-    path = os.path.join(token_data_dir,f'test.txt')
-    victim_test_num =split_testing(path,'java',None,saved_path,surrogate_train_num)
-    split_train_victim(os.path.join(token_data_dir,'train.txt'),'java',None,'train',saved_path,apperaed_id,victim_test_num)
+        path = os.path.join(token_data_dir,f'test.txt')
+        victim_test_num =split_testing(path,'java',None,saved_path,surrogate_train_num)
+        split_train_victim(os.path.join(token_data_dir,'train.txt'),'java',None,'train',saved_path,apperaed_id,victim_test_num)
     # get_the_ground_truth_for_testing('/workspace/CodeCompletion-line/dataset/javaCorpus/line_completion/test.json','java','/workspace/CodeCompletion-token/dataset/javaCorpus/token_completion/test.txt',None)
     
     
