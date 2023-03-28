@@ -50,6 +50,75 @@ def prepare_data(args):
 
     return classifier_train, classifier_test
 
+def prepare_sample_data(args):
+    # if args.mode == 'victim':
+    #     model_name = "CodeGPT-small-java-adaptedGPT2"
+    if 'surrogate' in args.mode:
+        base_mode  = 'surrogate'
+        model_name = args.surrogate_model.split('/')[-1]
+    elif 'victim' in args.mode:
+        base_mode = 'victim'
+        model_name = args.victim_model.split('/')[-1]
+    else:
+        raise
+    predictions_train = get_data(args.prediction_data_folder_path,f'train_{model_name}_{args.mode}_java_infer.txt')
+    train = get_data(args.prediction_data_folder_path,f'train_{base_mode}_sample_java.json')
+    predictions_test = get_data(args.prediction_data_folder_path,f'test_{model_name}_{args.mode}_python_infer.txt')
+    test = get_data(args.prediction_data_folder_path,f'test_{base_mode}_sample_python.json')
+    
+    assert len(predictions_train) == len(train)
+    assert len(predictions_test) == len(test)
+    
+    classifier_train = []
+    for i in range(len(train)): 
+        train_data = json.loads(train[i])
+        classifier_train.append({
+            'id':i, 
+            "input":train_data['input'],
+            "gt":train_data['gt'],
+            "prediction":predictions_train[i]
+         })
+    classifier_test = []
+    for i in range(len(test)): 
+        test_data = json.loads(test[i])
+        classifier_test.append({
+            'id':i, 
+            "input":test_data['input'],
+            "gt":test_data['gt'],
+            "prediction":predictions_test[i]
+         })
+
+    return classifier_train, classifier_test
+
+def prepare_sample_java_data(args):
+    # if args.mode == 'victim':
+    #     model_name = "CodeGPT-small-java-adaptedGPT2"
+    if 'surrogate' in args.mode:
+        base_mode  = 'surrogate'
+        model_name = args.surrogate_model.split('/')[-1]
+    elif 'victim' in args.mode:
+        base_mode = 'victim'
+        model_name = args.victim_model.split('/')[-1]
+    else:
+        raise
+    predictions_test = get_data(args.prediction_data_folder_path,f'train_{model_name}_{args.mode}_java_infer.txt')
+    test = get_data(args.prediction_data_folder_path,f'train_{base_mode}_sample_java.json')
+
+    
+    assert len(predictions_test) == len(test)
+    
+    classifier_test = []
+    for i in range(len(test)): 
+        test_data = json.loads(test[i])
+        classifier_test.append({
+            'id':i, 
+            "input":test_data['input'],
+            "gt":test_data['gt'],
+            "prediction":predictions_test[i]
+         })
+
+    return classifier_test
+
 # 将data分为训练集和验证集
 def divide_data(args,classifier_train,classifier_test,scale=0.8):
 
@@ -97,17 +166,62 @@ def keep_test_data(args,classifier_train,classifier_test):
             f.write('\n')
             f.write(json.dumps(classifier_train[i]))
             f.write('\n')
+def keep_normal_test_data(args,classifier_train,classifier_test):
+    saved_dir = os.path.join(args.data_dir,args.lang,args.surrogate_model,args.sample_ratio)
+    if not os.path.exists(saved_dir):
+        os.makedirs(saved_dir)
+    with open(os.path.join(saved_dir,f'test.json'),'w') as f:
+        for i in range(len(classifier_train)):
+            classifier_test[i]['label'] = 0
+            classifier_train[i]['label'] = 1
+            f.write(json.dumps(classifier_test[i]))
+            f.write('\n')
+            f.write(json.dumps(classifier_train[i]))
+            f.write('\n')
+def keep_sample_java_data(args,classifier_test):
+    saved_dir = os.path.join(args.prediction_data_folder_path,'sample_java')
+    if not os.path.exists(saved_dir):
+        os.makedirs(saved_dir)
+    model_name = args.victim_model.split('/')[-1]
+    with open(os.path.join(saved_dir,f'train_{model_name}_{args.mode}.json'),'w') as f:
+        for i in range(len(classifier_test)):
+            classifier_test[i]['label'] = 1
+            f.write(json.dumps(classifier_test[i]))
+            f.write('\n')
 
-
+def keep_sample_data(args,classifier_train,classifier_test):
+    saved_dir = os.path.join(args.prediction_data_folder_path,'sample_all')
+    if not os.path.exists(saved_dir):
+        os.makedirs(saved_dir)
+    model_name = args.victim_model.split('/')[-1]
+    with open(os.path.join(saved_dir,f'train_{model_name}_{args.mode}.json'),'w') as f:
+        for i in range(len(classifier_train)):
+            classifier_test[i]['label'] = 0
+            classifier_train[i]['label'] = 1
+            f.write(json.dumps(classifier_test[i]))
+            f.write('\n')
+            f.write(json.dumps(classifier_train[i]))
+            f.write('\n')
+            
 class ClassificationDataset(Dataset):
     def __init__(self,args,file_type,tokenizer) -> None:
         super().__init__()
         saved_dir = os.path.join(args.data_dir,args.lang,args.surrogate_model,args.sample_ratio)
         if args.use_tree_component:
-            suffix = '_PTM4_.pickle'
+            if args.consider_topk_tempreature:
+                suffix = '_PTM4_topk_tempreature.pickle'
+            elif args.consider_epoch:
+                suffix = '_PTM4_epoch.pickle'
+            elif args.consider_sample_java:
+                suffix = '_PTM4_sample_java.pickle'
+            else:
+                suffix = '_PTM4_.pickle'
         else:
             suffix = '.pickle'
-        if os.path.exists(os.path.join(saved_dir,file_type+suffix)):
+        if args.consider_sample_java:
+            saved_dir = os.path.join(args.prediction_data_folder_path,'sample')
+        # 由于温度和epoch都会变，所以需要重新生成
+        if os.path.exists(os.path.join(saved_dir,file_type+suffix)) and not args.consider_epoch and not args.consider_topk_tempreature:
             with open(os.path.join(saved_dir,file_type+suffix),'rb') as f:
                 self.data = pickle.load(f)
         else:

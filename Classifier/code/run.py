@@ -1,5 +1,5 @@
 from dataset import ClassificationDataset,prepare_data,divide_data,ClassificationDataset_collate_fn
-from model import TBertT
+from model import TBertT,TBertTNoTitle,TBertTNoText,TBertTNoCode
 import os
 from transformers import AutoTokenizer,AutoModelForSequenceClassification
 from torch.utils.data import DataLoader
@@ -46,7 +46,7 @@ def get_args():
     parser.add_argument(
         "--sample_ratio",
         type=str,
-        choices=['10','20','30']
+        choices=['5','10','20','30']
     )
     parser.add_argument(
         "--batch_size",
@@ -137,6 +137,30 @@ def get_args():
         action='store_true',
         help='whether to use tree component'
     )
+    parser.add_argument(
+        '--ablation_mode',
+        type=str,
+        choices=['no_title','no_text','no_code'],
+        default=None
+    )
+    #下面这两个参数是mia用的，run.py不需要
+    parser.add_argument(
+        '--consider_topk_tempreature',
+        action='store_true'
+    )
+    parser.add_argument(
+        '--consider_sample_java',
+        action='store_true'
+    )
+    parser.add_argument(
+        '--consider_sample_all',
+        action='store_true'
+    )
+    parser.add_argument(
+        "--consider_epoch",
+        action='store_true',
+        help="whether to consider epoch"
+    )
 
     
     args = parser.parse_args()
@@ -203,6 +227,8 @@ def main():
                         datefmt='%m/%d/%Y %H:%M:%S',
                         level=logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s') 
+    if args.ablation_mode is not None:
+        args.classifier_save_dir = os.path.join(args.classifier_save_dir,args.ablation_mode)
     if not os.path.exists(args.classifier_save_dir):
         os.makedirs(args.classifier_save_dir)
     log_file = os.path.join(args.classifier_save_dir,'log.txt')
@@ -215,7 +241,14 @@ def main():
     model = AutoModelForSequenceClassification.from_pretrained(args.classifier_model_path,num_labels=2) #label=0/1
     model.resize_token_embeddings(len(tokenizer))
     if args.use_tree_component:
-        model = TBertT(model.config,args.classifier_model_path,num_class=2)
+        if args.ablation_mode is None:
+            model = TBertT(model.config,args.classifier_model_path,num_class=2)
+        elif args.ablation_mode == 'no_title': #对应无input_ids
+            model = TBertTNoTitle(model.config,args.classifier_model_path,num_class=2)
+        elif args.ablation_mode == 'no_text': #对应无groundtruth_ids
+            model = TBertTNoText(model.config,args.classifier_model_path,num_class=2)
+        elif args.ablation_mode == 'no_code': #对应无prediction_ids
+            model = TBertTNoCode(model.config,args.classifier_model_path,num_class=2)
         model.resize_token_embeddings(len(tokenizer))
 
     model.to(device)
@@ -249,6 +282,7 @@ def main():
                                                 num_training_steps=t_total)
     # Train!
     logger.info("***** Running training *****")
+    logger.info("  surrogate_model = "+ args.surrogate_model)
     logger.info("  Num examples = %d", len(train_dataset)) 
     logger.info("  Num epoch = %d", args.num_train_epochs)
     logger.info("  Instantaneous batch size per GPU = %d", args.batch_size)
@@ -256,6 +290,8 @@ def main():
     logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
     logger.info("  Total optimization steps = %d", t_total)
     logger.info("  seed = %d", args.seed)
+    if args.ablation_mode is not None:
+        logger.info("  ablation_mode = %s", args.ablation_mode)
     best_acc = 0.0
     model.zero_grad()
     for epoch in range(args.num_train_epochs):

@@ -1,5 +1,8 @@
-from dataset import ClassificationDataset,prepare_data,keep_test_data,ClassificationDataset_collate_fn
+from dataset import ClassificationDataset,prepare_data,keep_test_data,ClassificationDataset_collate_fn,keep_sample_data,prepare_sample_java_data,prepare_sample_data,keep_normal_test_data
+from transformers import BertConfig
+from sklearn.metrics import roc_auc_score
 import os
+from model import TBertT,TBertTNoTitle,TBertTNoText,TBertTNoCode
 from transformers import AutoTokenizer,AutoModelForSequenceClassification
 from torch.utils.data import DataLoader
 import torch
@@ -59,7 +62,7 @@ def get_args():
     parser.add_argument(
         "--sample_ratio",
         type=str,
-        choices=['10','20','30']
+        choices=['5','10','20','30']
     )
     parser.add_argument(
         "--batch_size",
@@ -72,6 +75,11 @@ def get_args():
         default=5e-5,
         type=float,
         help="The initial learning rate for Adam.",
+    )
+    parser.add_argument(
+        "--consider_epoch",
+        action='store_true',
+        help="whether to consider epoch"
     )
     parser.add_argument(
         "--num_train_epochs",
@@ -145,7 +153,28 @@ def get_args():
         # choices=['surrogate','victim'],
         type=str,
     )
-
+    parser.add_argument(
+        '--save_results',
+        action='store_true'
+    )
+    parser.add_argument(
+        '--consider_topk_tempreature',
+        action='store_true'
+    )
+    parser.add_argument(
+        '--consider_sample_java',
+        action='store_true'
+    )
+    parser.add_argument(
+        '--consider_sample_all',
+        action='store_true'
+    )
+    parser.add_argument(
+        '--ablation_mode',
+        type=str,
+        choices=['no_title','no_text','no_code'],
+        default=None
+    )
     
     args = parser.parse_args()
     return args
@@ -171,6 +200,13 @@ def evaluate(args,model,dataloader,device):
     model.eval()
     eval_loss = 0
     acc = 0
+    tp = 0
+    fp = 0
+    fn = 0
+    tn = 0
+    all_prediction = []
+    all_labels = []
+    all_logits = []
     for batch in tqdm(dataloader, desc="Evaluating"):
         with torch.no_grad():
             if args.use_tree_component:
@@ -190,16 +226,35 @@ def evaluate(args,model,dataloader,device):
             loss_fct = torch.nn.CrossEntropyLoss()
             e_l = loss_fct(logits.view(-1, 2), labels.view(-1))
             eval_loss += e_l.mean().item()
-            logits = logits.detach().cpu().argmax(dim=1).numpy()
+            prediction = logits.detach().cpu().argmax(dim=1).numpy()
+            logits = logits.detach().cpu().numpy()
             labels = labels.to('cpu').numpy()
-            acc += np.sum(logits == labels)
-    return eval_loss / len(dataloader), acc / len(dataloader.dataset)
+            acc += np.sum(prediction == labels)
+            tn += np.sum((prediction == 0) & (labels == 0))
+            tp += np.sum((prediction == 1) & (labels == 1))
+            fp += np.sum((prediction == 1) & (labels == 0))
+            fn += np.sum((prediction == 0) & (labels == 1))
+            all_prediction.extend(list(prediction))
+            all_labels.extend(list(labels))
+            all_logits.extend(list(logits[:,1]))
+    return {
+        'loss':eval_loss / len(dataloader), 
+        'acc':acc / len(dataloader.dataset),
+        'recall':tp / (tp + fn),
+        'precision':tp / (tp + fp),
+        'f1':2 * tp / (2 * tp + fp + fn),
+        'TPR':tp / (tp + fn),
+        'FPR':fp / (fp + tn),
+        'AUC':roc_auc_score(all_labels,all_logits) if not args.consider_sample_java else 'not applicable',
+    },all_prediction
 
 
             
 def main():
     args = get_args()
-    args.mode = VICTIM_MODE2MODEL_MAP[args.mode]
+    if args.consider_epoch:
+        args.mode = VICTIM_MODE2MODEL_MAP[args.mode]
+    
     
     # utils
     device = torch.device("cuda" if torch.cuda.is_available()  else "cpu")
@@ -210,6 +265,9 @@ def main():
                         datefmt='%m/%d/%Y %H:%M:%S',
                         level=logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s') 
+    if args.ablation_mode is not None:
+        args.classifier_save_dir = os.path.join(args.classifier_save_dir,args.ablation_mode)
+        args.classifier_model_path = os.path.join(args.classifier_model_path,args.ablation_mode)
     if not os.path.exists(args.classifier_save_dir):
         os.makedirs(args.classifier_save_dir)
     log_file = os.path.join(args.classifier_save_dir,'log_eval.txt')
@@ -219,38 +277,94 @@ def main():
 
     special_token = get_special_tokens(args.lit_file)
     tokenizer = AutoTokenizer.from_pretrained("microsoft/codebert-base",do_lower_case=True,additional_special_tokens=special_token)
-    model = AutoModelForSequenceClassification.from_pretrained(args.classifier_model_path,num_labels=2) #label=0/1
-    model.resize_token_embeddings(len(tokenizer))
+    
+    if args.use_tree_component:
+        if args.ablation_mode is None:
+            model = TBertT(BertConfig(),'microsoft/codebert-base',num_class=2)
+        elif args.ablation_mode == 'no_title': #对应无input_ids
+            model = TBertTNoTitle(BertConfig(),'microsoft/codebert-base',num_class=2)
+        elif args.ablation_mode == 'no_text': #对应无groundtruth_ids
+            model = TBertTNoText(BertConfig(),'microsoft/codebert-base',num_class=2)
+        elif args.ablation_mode == 'no_code': #对应无prediction_ids
+            model = TBertTNoCode(BertConfig(),'microsoft/codebert-base',num_class=2)
+        model.resize_token_embeddings(len(tokenizer))
+        model.load_state_dict(torch.load(os.path.join(args.classifier_model_path,'pytorch_model.bin')),strict=True)
+        logger.info("[load model]: "+ f"{args.classifier_model_path}")
+    else:
+        model = AutoModelForSequenceClassification.from_pretrained(args.classifier_model_path,num_labels=2) #label=0/1
+        model.resize_token_embeddings(len(tokenizer))
     model.to(device)
     logger.info("---------------------------------")
     model_name = args.victim_model.split('/')[-1]
     logger.info(f"[surrogate model loaded]: {args.classifier_model_path}")
     logger.info("[victim model]: "+ f"{model_name}_{args.mode}")
     logger.info("[classifier model]: BERT-based")
+    logger.info("[seed]: "+ f"{args.seed}")
+    if args.ablation_mode is not None:
+        logger.info("[ablation mode]: "+ f"{args.ablation_mode}")
+    if args.use_tree_component:
+        logger.info("[tree component]: used")
     logger.info("---------------------------------")
     
     # data prepare
     data_path = os.path.join(args.data_dir,args.lang,args.surrogate_model,args.sample_ratio)
-    if not os.path.exists(os.path.join(data_path,f'test_{model_name}_{args.mode}.json')):
-        classifier_train, classifier_test = prepare_data(args)
-        logger.info(f"[data prepared]: length :{len(classifier_train)} {len(classifier_test)}")
+    if args.consider_epoch or args.consider_topk_tempreature:
+        logger.info('[USE EPOCH or TOPL-TEMPERATURE DATA]')
+        if not os.path.exists(os.path.join(data_path,f'test_{model_name}_{args.mode}.json')):
+            classifier_train, classifier_test = prepare_data(args)
+            logger.info(f"[data prepared]: length :{len(classifier_train)} {len(classifier_test)}")
+            keep_test_data(args,classifier_train,classifier_test)
+        test_dataset = ClassificationDataset(args,file_type=f'test_{model_name}_{args.mode}',tokenizer=tokenizer)
+    elif args.consider_sample_java:
+        data_path = os.path.join(args.prediction_data_folder_path,'sample_java')
+        classifier_test = prepare_sample_java_data(args)
+        logger.info(f"[data prepared]: length : {len(classifier_test)}")
+        keep_sample_data(args,classifier_test)
+        test_dataset = ClassificationDataset(args,file_type=f'test_{model_name}_{args.mode}',tokenizer=tokenizer)
+    elif args.consider_sample_all:
+        data_path = os.path.join(args.prediction_data_folder_path,'sample_all')
+        classifier_train, classifier_test = prepare_sample_data(args)
+        logger.info(f"[data prepared]: length : {len(classifier_test)}")
         keep_test_data(args,classifier_train,classifier_test)
-    # 其中train.json和dev.json是用于训练和测试的classifier的数据，test.json是用于验证真实世界情况的数据
-    test_dataset = ClassificationDataset(args,file_type=f'test_{model_name}_{args.mode}',tokenizer=tokenizer)
-    # test_dataset = ClassificationDataset(args,file_type='test',tokenizer=tokenizer)
+        test_dataset = ClassificationDataset(args,file_type=f'test_{model_name}_{args.mode}',tokenizer=tokenizer)
+    else:
+        if not os.path.exists(os.path.join(data_path,'test.json')):
+            classifier_train, classifier_test = prepare_data(args)
+            logger.info(f"[data prepared]: length :{len(classifier_train)} {len(classifier_test)}")
+            keep_normal_test_data(args,classifier_train,classifier_test)
+        test_dataset = ClassificationDataset(args,file_type='test',tokenizer=tokenizer)
 
+    # 其中train.json和dev.json是用于训练和测试的classifier的数据，test.json是用于验证真实世界情况的数据
     batch_size = args.batch_size * args.gradient_accumulation_steps
+    if not args.consider_sample_java and not args.consider_sample_all:
+        val_dataset = ClassificationDataset(args,file_type='val',tokenizer=tokenizer)
+        val_dataloader = DataLoader(val_dataset,batch_size=batch_size,shuffle=False,collate_fn=ClassificationDataset_collate_fn)
     test_dataloader = DataLoader(test_dataset,batch_size=batch_size,shuffle=False,collate_fn=ClassificationDataset_collate_fn)
+    
+    
     # test_dataloader = DataLoader(test_dataset,batch_size=batch_size,shuffle=False,collate_fn=ClassificationDataset_collate_fn)
 
     
     
+    if not args.consider_sample_java and not args.consider_sample_all:
+        res,_ = evaluate(args, model, val_dataloader,device=device)
+        logger.info('[val_best_acc]: {}\n\n'.format(res))
+    res,all_logits  =evaluate(args, model, test_dataloader,device=device)
+    logger.info('[best_acc]: {}\n\n'.format(json.dumps(res,indent=2)))
+    if args.save_results:
+        logger.info('results saved \n')
+        data_dir = os.path.join(args.data_dir,args.lang,args.surrogate_model,args.sample_ratio)
+        save_dir = os.path.join(args.classifier_save_dir,f'res_{args.sample_ratio}_{args.seed}.json')
+        with open(os.path.join(data_dir,'test'+'.json'),'r') as f:
+            data = f.readlines()
+        with open(save_dir,'w')as f:
+            for i,d in enumerate(data):
+                d = json.loads(d)
+                d['predicition_label'] = int(all_logits[i])
+                f.write(json.dumps(d))
+                f.write('\n')
+        logger.info(f'[results saved]: {save_dir} \n')
 
-    
-    test_loss,val_acc  =evaluate(args, model, test_dataloader,device=device)
-    
-    
-    logger.info('[best_acc]: {}\n\n'.format(val_acc))
 
 if __name__ == '__main__':
     main()

@@ -1,15 +1,16 @@
 from nltk.translate.bleu_score import sentence_bleu,SmoothingFunction
 import json
-from sklearn import tree
+from sklearn import neural_network
 import os
 import argparse
 import logging
 from args import victim_maps
 from sklearn.metrics import roc_auc_score
-import random
 import numpy as np
+import random
 VICTIM_MODE2MODEL_MAP = victim_maps()
 logger = logging.getLogger(__name__)
+
 def n_gram_feature_extract(n, text):
     # n: n-gram
     # text: string
@@ -99,19 +100,19 @@ if __name__ == '__main__':
     logger.info("---------------------------------")
     model_name = args.victim_model.split('/')[-1]
     logger.info("[victim model]: "+ f"{model_name}_{args.mode}")
-    logger.info("[classifier model]: decision_tree")
+    logger.info("[classifier model]: mlp")
     logger.info("---------------------------------")
     # prefix_path = '../dataset/java/gpt2/30'
-    # prefix_path = '../dataset/java/microsoft/CodeGPT-small-java-adaptedGPT2/30'
     # prefix_path = '../dataset/java/rnn/30'
     # prefix_path = '../dataset/java/transformer/30'
+    # prefix_path = '../dataset/java/microsoft/CodeGPT-small-java-adaptedGPT2/30'
     # prefix_path = '../dataset/java/microsoft/CodeGPT-small-java/30'
     train_feature, train_label = get_data(args.prefix_path, 'train')
     temp = list(zip(train_feature, train_label))
     random.shuffle(temp)
     train_feature, train_label = zip(*temp)
     logger.info("[get training data]")
-    clf = tree.DecisionTreeClassifier(criterion = "gini",max_depth=5)
+    clf = neural_network.MLPClassifier(hidden_layer_sizes=(50,), activation='relu', solver='adam', random_state=args.seed)
     logger.info(f"[begin training],{len(train_feature)}")
     clf = clf.fit(train_feature, train_label)
     logger.info("[finish training]")
@@ -123,6 +124,7 @@ if __name__ == '__main__':
     else:
         test_feature, test_label = get_data(args.prefix_path, 'test')
     logger.info("[get testing data]")
+    # logger.info(clf.score(test_feature, test_label))
     predict = clf.predict(test_feature)
     TPR = 0
     FPR = 0

@@ -8,13 +8,9 @@ MODEL=microsoft/codebert-base #change model
 
 
 
-for SAMPLE_RATIO in {5..5..10}
-do
-
 LANG=java    
 CLASSIFIER_SAVE_DICT=../classifier_save/PTM3/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/${SEED}
-# PREDICTION_DATA_FOLDER_PATH=../../CodeCompletion-line/dataset/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/
-PREDICTION_DATA_FOLDER_PATH=../../CodeCompletion-line/dataset/javaCorpus/0.01/${SAMPLE_RATIO}/
+PREDICTION_DATA_FOLDER_PATH=../../CodeCompletion-line/dataset/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/
 LITFILE=../dataset/javaCorpus/literals.json
 
 python run.py \
@@ -32,7 +28,7 @@ python run.py \
     --classifier_model_path ${MODEL} \
     --weight_decay=0.01 \
     --use_tree_component \
-    --seed ${SEED}
+    --seed ${SEED} \
+    --ablation_mode ${ablation_mode} 
 
-done
 

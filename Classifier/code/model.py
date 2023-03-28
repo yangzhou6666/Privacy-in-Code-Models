@@ -190,6 +190,8 @@ class TBertTNoTitle(PreTrainedModel):
 
     def forward(
             self,
+            title_ids=None,
+            title_attention_mask=None,
             text_ids=None,
             text_attention_mask=None,
             code_ids=None,
@@ -200,6 +202,9 @@ class TBertTNoTitle(PreTrainedModel):
 
         logits = self.cls(text_hidden=n_hidden, code_hidden=c_hidden)
         return logits
+    def resize_token_embeddings(self,new_num_tokens):
+        self.nbert.resize_token_embeddings(new_num_tokens)
+        self.cbert.resize_token_embeddings(new_num_tokens)
 
 
 class TBertTNoText(PreTrainedModel):
@@ -214,6 +219,8 @@ class TBertTNoText(PreTrainedModel):
             self,
             title_ids=None,
             title_attention_mask=None,
+            text_ids=None,
+            text_attention_mask=None,
             code_ids=None,
             code_attention_mask=None,
     ):
@@ -223,6 +230,9 @@ class TBertTNoText(PreTrainedModel):
 
         logits = self.cls(title_hidden=t_hidden,code_hidden=c_hidden)
         return logits
+    def resize_token_embeddings(self,new_num_tokens):
+        self.tbert.resize_token_embeddings(new_num_tokens)
+        self.cbert.resize_token_embeddings(new_num_tokens)
 
 class TBertTNoCode(PreTrainedModel):
     def __init__(self, config, code_bert, num_class):
@@ -238,6 +248,8 @@ class TBertTNoCode(PreTrainedModel):
             title_attention_mask=None,
             text_ids=None,
             text_attention_mask=None,
+            code_ids=None,
+            code_attention_mask=None,
     ):
         t_hidden = self.tbert(
             title_ids, attention_mask=title_attention_mask)[0]
@@ -245,6 +257,9 @@ class TBertTNoCode(PreTrainedModel):
 
         logits = self.cls(title_hidden=t_hidden, text_hidden=n_hidden)
         return logits
+    def resize_token_embeddings(self,new_num_tokens):
+        self.tbert.resize_token_embeddings(new_num_tokens)
+        self.nbert.resize_token_embeddings(new_num_tokens)
 
 
 class TBertSI(PreTrainedModel):

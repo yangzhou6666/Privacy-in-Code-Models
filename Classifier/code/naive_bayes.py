@@ -5,6 +5,9 @@ import os
 import argparse
 import logging
 from args import victim_maps
+from sklearn.metrics import roc_auc_score
+import numpy as np
+import random
 VICTIM_MODE2MODEL_MAP = victim_maps()
 logger = logging.getLogger(__name__)
 
@@ -71,11 +74,19 @@ def args():
         # choices=['surrogate','victim'],
         type=str,
     )
+    parser.add_argument(
+        '--seed',
+        type=int,
+        default=42
+    )
     args = parser.parse_args()
     return args
 if __name__ == '__main__':
     args = args()
-    args.mode = VICTIM_MODE2MODEL_MAP[args.mode]
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    if args.mode in VICTIM_MODE2MODEL_MAP:
+        args.mode = VICTIM_MODE2MODEL_MAP[args.mode]
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                         datefmt='%m/%d/%Y %H:%M:%S',
                         level=logging.INFO)
@@ -97,6 +108,9 @@ if __name__ == '__main__':
     # prefix_path = '../dataset/java/microsoft/CodeGPT-small-java-adaptedGPT2/30'
     # prefix_path = '../dataset/java/microsoft/CodeGPT-small-java/30'
     train_feature, train_label = get_data(args.prefix_path, 'train')
+    temp = list(zip(train_feature, train_label))
+    random.shuffle(temp)
+    train_feature, train_label = zip(*temp)
     logger.info("[get training data]")
     clf = naive_bayes.GaussianNB()
     logger.info(f"[begin training],{len(train_feature)}")
@@ -105,9 +119,27 @@ if __name__ == '__main__':
     val_feature, val_label = get_data(args.prefix_path, 'val')
     logger.info("[get val data]")
     logger.info(clf.score(val_feature, val_label))
-    test_feature, test_label = get_data(args.prefix_path, f'test_{model_name}_{args.mode}')
+    if args.mode != 'victim':
+        test_feature, test_label = get_data(args.prefix_path, f'test_{model_name}_{args.mode}')
+    else:
+        test_feature, test_label = get_data(args.prefix_path, 'test')
     logger.info("[get testing data]")
-    logger.info(clf.score(test_feature, test_label))
+    # logger.info(clf.score(test_feature, test_label))
+    predict = clf.predict(test_feature)
+    TPR = 0
+    FPR = 0
+    predict_logit = clf.predict_proba(test_feature)
+    logger.info(f"auc: {roc_auc_score(test_label, predict_logit[:,1])}")
+    for i in range(len(predict)):
+        if predict[i] == 1 and test_label[i] == 1:
+            TPR += 1
+        if predict[i] == 1 and test_label[i] == 0:
+            FPR += 1
+    TPR = TPR / len(predict)
+    FPR = FPR / len(predict)
+    logger.info(f"TPR: {TPR}")
+    logger.info(f"FPR: {FPR}")
+    logger.info(f"Accuracy: {clf.score(test_feature, test_label)}")
     logger.info("\n\n")
 
 
