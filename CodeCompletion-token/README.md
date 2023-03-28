@@ -1,8 +1,6 @@
 # CodeXGLUE -- Code Completion (token level)
 
-**Update 2021.07.30:** We update the code completion dataset with literals normalized to avoid sensitive information. 
 
-Here is the introduction and pipeline for token level code completion task.
 
 ## Task Definition
 
@@ -12,26 +10,6 @@ Code completion is a one of the most widely used features in software developmen
 
 
 ## Dataset
-
-We collect and provide two datasets for code completion. One in python, the other in java.
-
-
-### Dependency
-
-- python 3.7
-- javalang == 0.13.0
-
-
-### py150 dataset
-
-We use py150 dataset from Raychev's OOPSLA 2016 paper [Probabilistic Model for Code with Decision Trees](https://files.sri.inf.ethz.ch/website/papers/oopsla16-dt.pdf).
-
-To download and preprocess the dataset, navigate to `dataset/py150` directory, and run
-```shell
-bash download_and_extract.sh
-python preprocess.py --base_dir=py150_files --output_dir=token_completion
-python preprocess.py --base_dir=py150_files --output_dir=token_completion-original
-```
 
 ### Github Java Corpus
 
@@ -60,13 +38,6 @@ Code corpus are saved in txt format files. one line is a tokenized code snippets
 
 ### Data Statistics
 
-Data statistics of py150 dataset are shown in the below table, note that there doesn't exist dev set in the origin py150 dataset, we select 5,000 files in the original train set as dev set.
-
-| Data Split  |   #Files    |   #Tokens   |
-| ----------- | :---------: | :---------: |
-|    Train    |    95,000   |    72.1M    |
-|     Dev     |    5,000    |     4.4M    |
-|    Test     |    50,000   |    37.3M    |
 
 Data statistics of Github Java Corpus dataset are shown in the below table:
 
@@ -77,207 +48,20 @@ Data statistics of Github Java Corpus dataset are shown in the below table:
 |    Test     |    8,268   |     5.3M    |
 
 
-## Evaluator
 
-We provide a script to evaluate predictions for this task, and report accuracy score. You can run the script like this:
 
-```bash
-python evaluator/evaluator.py -a=evaluator/answers.txt -p=evaluator/predictions.txt
-```
-
-The outputs are:
-```
-Total 5315204 tokens, accuracy: 76.45
-```
-
-### Input Format
-
-Answer file is in the same format of the preprocessed dev dataset file. A legal prediction file is expected to be a txt format file. It should have the same number of lines as answer file. And for each line, it should contain the same number of tokens (split by space) as the corresponding line in the answer file. Note that `<s>`, `</s>`, `<EOL>` are not evaluated so that you don't need worry about how to predict the first token. You can put any token you like at first. For example, one line in the answer file is:
-```
-<s> import json <EOL> json . load ( f ) </s>
-```
-
-And the corresponding line in your prediction file may be:
-```
-. import numpy <EOL> json . dump ( open ) <EOL>
-```
-The accuracy on this line is 62.5%
 
 
 ## Pipeline
-
-
-### CodeGPT
-
-we provide CodeGPT, which is a Transformer-based language model pre-trained on programming language (PL). CodeGPT shares the same model architecture and training object with GPT-2, consisting 12 layers of Transformer decoders. We pre-train monolingual models respectively on Python and Java corpus from the CodeSearchNet dataset, which includes 1.1M Python functions and 1.6M Java methods. A function or method in training dataset consists function signature and function body. Some functions also contain NL docstrings. The dataset statistics are shown below:
-|            | #Functions |   #Tokens   |
-| ---------- | :--------: | :---------: |
-|   Python   | 1,144,977  |   119.0M    |
-|    Java    | 1,554,613  |   169.4M    |
-
-We release two CodeGPT models for each programming language. One model is pre-trained from scratch, in a way that the BPE (byte pair encoder) vocabulary is newly obtained on code corpus and that model parameters are randomly initialized. The other model is a domain-adaptive one, which uses GPT-2 model as the starting point and is continually trained on code corpus. Therefore, the second model has the same vocabulary with GPT-2, and inherits the natural language understanding ability of GPT-2. It might perform better on natural language related tasks. We call the second model CodeGPT-adapted and regard it as the default one. 
-
-All the models are publicly available at [huggingface website](https://huggingface.co/models?search=microsoft). Model names are `CodeGPT-small-py`, `CodeGPT-small-java`, `CodeGPT-small-py-adaptedGPT2`, `CodeGPT-small-java-adaptedGPT2`
-
-
-### Dependency
-
-- python 3.6 or 3.7
-- torch>=1.4.0
-- transformers>=2.5.0 and < 4.0.0
-- fuzzywuzzy
-
-### Fine-tune
-To fine-tune CodeGPT on javaCorpus dataset for code completion in multi-GPU on a single machine, navigate to `code` directory, run:
-
-#### Py150
-
-```shell
-LANG=python                       # set python for py150
-DATADIR=../dataset/py150/token_completion-original
-LITFILE=../dataset/py150/literals.json
-OUTPUTDIR=../save/py150-original
-PRETRAINDIR=microsoft/CodeGPT-small-py      # microsoft/CodeGPT-small-py for py150
-LOGFILE=completion_py150_original.log
-PER_NODE_GPU=1       # modify YOUR_GPU_NUM
-
-CUDA_VISIBLE_DEVICES=5 python -m torch.distributed.launch --nproc_per_node=$PER_NODE_GPU run_lm.py \
-        --data_dir=$DATADIR \
-        --lit_file=$LITFILE \
-        --langs=$LANG \
-        --output_dir=$OUTPUTDIR \
-        --pretrain_dir=$PRETRAINDIR \
-        --log_file=$LOGFILE \
-        --model_type=gpt2 \
-        --block_size=1024 \
-        --do_train \
-        --gpu_per_node $PER_NODE_GPU \
-        --learning_rate=8e-5 \
-        --weight_decay=0.01 \
-        --evaluate_during_training \
-        --per_gpu_train_batch_size=2 \
-        --per_gpu_eval_batch_size=4 \
-        --gradient_accumulation_steps=4 \
-        --num_train_epochs=10 \
-        --logging_steps=100 \
-        --save_steps=1000 \
-        --seed=42 \
-        --overwrite_output_dir \
-        --not_pretrain
+To get the surrogate models, we can run
+```
+$ cd /workspace/CodeCompletion-token/code
+$ bash pipline_java.sh # can change `PRETRAINDIR` in [microsoft/CodeGPT-small-java,microsoft/CodeGPT-small-java-adaptedGPT2,gpt2] to train different surrogate model
+$ bash pipline_java_transformer.sh
+$ bash pipline_java_lstm.sh
+```
+To get the victim model, we can run:
+```
+$ bash pipline_java_victim.sh # get the victim model
 ```
 
-#### JavaCorpus
-```
-### Fine-tuning
-
-#### JavaCorpus
-```
-LANG=java                       # set python for py150
-DATADIR=../dataset/javaCorpus/token_completion/0.05
-LITFILE=../dataset/javaCorpus/literals.json
-OUTPUTDIR=../save/javaCorpus-0.05
-PRETRAINDIR=microsoft/CodeGPT-small-java        # microsoft/CodeGPT-small-py for py150
-LOGFILE=completion_javaCorpus-0.05.log
-PER_NODE_GPU=1       # modify YOUR_GPU_NUM
-
-CUDA_VISIBLE_DEVICES=6 python -m torch.distributed.launch --nproc_per_node=$PER_NODE_GPU run_lm.py \
-        --data_dir=$DATADIR \
-        --lit_file=$LITFILE \
-        --langs=$LANG \
-        --output_dir=$OUTPUTDIR \
-        --pretrain_dir=$PRETRAINDIR \
-        --log_file=$LOGFILE \
-        --model_type=gpt2 \
-        --block_size=1024 \
-        --do_train \
-        --gpu_per_node $PER_NODE_GPU \
-        --learning_rate=8e-5 \
-        --weight_decay=0.01 \
-        --evaluate_during_training \
-        --per_gpu_train_batch_size=2 \
-        --per_gpu_eval_batch_size=4 \
-        --gradient_accumulation_steps=4 \
-        --num_train_epochs=5 \
-        --logging_steps=100 \
-        --save_steps=1000 \
-        --seed=42 \
-        --overwrite_output_dir \
-        --not_pretrain
-```
-
-We stop at 50000 steps on py150 experiment, which takes 25 hours. And 2 hours with 2000 steps on java dataset. Both experiments run on 2 NVIDIA P100.
-
-### Evaluation && Inference
-
-It's recommanded to run evaluation on single GPU. The predictions will be saved at `$OUTPUTDIR/predictions.txt`
-
-```shell
-export CUDA_VISIBLE_DEVICES=0
-LANG=java                       # set python for py150
-DATADIR=../dataset/javaCorpus/token_completion
-LITFILE=../dataset/javaCorpus/literals.json
-OUTPUTDIR=../save/javaCorpus
-PRETRAINDIR=../save/javaCorpus/checkpoint       # directory of your saved model
-LOGFILE=completion_javaCorpus_eval.log
-
-python -u run_lm.py \
-        --data_dir=$DATADIR \
-        --lit_file=$LITFILE \
-        --langs=$LANG \
-        --output_dir=$OUTPUTDIR \
-        --pretrain_dir=$PRETRAINDIR \
-        --log_file=$LOGFILE \
-        --model_type=gpt2 \
-        --block_size=1024 \
-        --do_eval \
-        --per_gpu_eval_batch_size=16 \
-        --logging_steps=100 \
-        --seed=42 
-```
-
-It might take 60 minutes for inference on py150 dataset and 15 minutes on java Corpus on a single NVIDIA P100.
-
-## Result
-
-### py150
-
-| Model                                                 |  Accuracy  |
-| ----------------------------------------------------- | :--------: |
-| LSTM + BPE                                            |    61.94   |
-| Transformer (12L)                                     |    74.48   |
-| [GPT-2](https://d4mucfpksywv.cloudfront.net/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)                            |    75.90   |
-| CodeGPT                                               |    76.58   |
-| CodeGPT-adapted                                       |  **76.60** |
-
-### javaCorpus
-
-| Model                                                 |  Accuracy  |
-| ----------------------------------------------------- | :--------: |
-| LSTM + BPE                                            |    58.92   |
-| Transformer (12L)                                     |    65.18   |
-| [GPT-2](https://d4mucfpksywv.cloudfront.net/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)                           |    75.40   |
-| CodeGPT                                               |    76.79   |
-| CodeGPT-adapted                                       |  **77.73** |
-
-
-## Reference
-
-If you use code completion datasets, please also cite the following papers in addition to our CodeXGLUE:
-
-<pre><code>@article{raychev2016probabilistic,
-  title={Probabilistic Model for Code with Decision Trees},
-  author={Raychev, Veselin and Bielik, Pavol and Vechev, Martin},
-  journal={ACM SIGPLAN Notices},
-  pages={731--747},
-  year={2016},
-  publisher={ACM New York, NY, USA}
-}</code></pre>
-
-<pre><code>@inproceedings{allamanis2013mining,
-  title={Mining Source Code Repositories at Massive Scale using Language Modeling},
-  author={Allamanis, Miltiadis and Sutton, Charles},
-  booktitle={2013 10th Working Conference on Mining Software Repositories (MSR)},
-  pages={207--216},
-  year={2013},
-  organization={IEEE}
-}</code></pre>
