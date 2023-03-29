@@ -1,5 +1,9 @@
 # Overview
 
+> The replication package is intended for academic and research purposes only. We do not condone or support the use of the replication package for malicious purposes, e.g., operating membership inference attacks on other code models.
+
+
+
 
 
 # Environment Configuration
