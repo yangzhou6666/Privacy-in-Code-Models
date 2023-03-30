@@ -1,10 +1,4 @@
-# 1. 把数据进行划分并保存 dataset/model/sample_ratio/
-# 2. 在1:1上进行训练 (name: bert_${model}_${sample_ratio}.pth),一共保存4x3个
-# 3. 在1:1上进行评测
-# export CUDA_VISIBLE_DEVICES=2
-# MASTER_PORT=94457 # modify
-# SURROGATE_MODEL=microsoft/CodeGPT-small-java # modify[CodeGPT-small-java-adaptedGPT2，microsoft/CodeGPT-small-java]
-# VICTIM_MODEL=microsoft/CodeGPT-small-java-adaptedGPT2 # modify[CodeGPT-small-java-adaptedGPT2]
+
 Percentage=0.01
 
 

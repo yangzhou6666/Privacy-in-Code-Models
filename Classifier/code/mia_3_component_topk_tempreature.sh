@@ -1,10 +1,8 @@
-# 1. 把数据进行划分并保存 dataset/model/sample_ratio/
-# 2. 在1:1上进行训练 (name: bert_${model}_${sample_ratio}.pth),一共保存4x3个
-# 3. 在1:1上进行评测
+
 export CUDA_VISIBLE_DEVICES=2
 MASTER_PORT=94457 # modify
-SURROGATE_MODEL=microsoft/CodeGPT-small-java # modify[CodeGPT-small-java-adaptedGPT2，microsoft/CodeGPT-small-java]
-VICTIM_MODEL=microsoft/CodeGPT-small-java-adaptedGPT2 # modify[CodeGPT-small-java-adaptedGPT2]
+SURROGATE_MODEL=microsoft/CodeGPT-small-java 
+VICTIM_MODEL=microsoft/CodeGPT-small-java-adaptedGPT2 
 Percentage=0.01
 
 for SEED in 30 42 58
@@ -19,7 +17,7 @@ do
 
 LANG=java    
 CLASSIFIER_SAVE_DICT=../classifier_save/PTM3/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/${SEED}/
-PREDICTION_DATA_FOLDER_PATH=../../CodeCompletion-line/dataset/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/
+PREDICTION_DATA_FOLDER_PATH=../../CodeCompletion-line/dataset/javaCorpus/${Percentage}/${SAMPLE_RATIO}/
 LITFILE=../dataset/javaCorpus/literals.json
 
 

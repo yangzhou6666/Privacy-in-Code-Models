@@ -1,4 +1,5 @@
-# CodeXGLUE -- Code Completion (token level)
+# Training CodeGPT for code completion
+
 
 
 
@@ -36,16 +37,7 @@ Code corpus are saved in txt format files. one line is a tokenized code snippets
 ```
 
 
-### Data Statistics
 
-
-Data statistics of Github Java Corpus dataset are shown in the below table:
-
-| Data Split  |   #Files   |   #Tokens   |
-| ----------- | :--------: | :---------: |
-|    Train    |   12,934   |    15.7M    |
-|     Dev     |    7,176   |     3.8M    |
-|    Test     |    8,268   |     5.3M    |
 
 
 
@@ -56,7 +48,7 @@ Data statistics of Github Java Corpus dataset are shown in the below table:
 To get the surrogate models, we can run
 ```
 $ cd /workspace/CodeCompletion-token/code
-$ bash pipline_java.sh # can change `PRETRAINDIR` in [microsoft/CodeGPT-small-java,microsoft/CodeGPT-small-java-adaptedGPT2,gpt2] to train different surrogate model
+$ bash pipline_java.sh # can change `PRETRAINDIR` in [microsoft/CodeGPT-small-java,gpt2] to train different surrogate model
 $ bash pipline_java_transformer.sh
 $ bash pipline_java_lstm.sh
 ```

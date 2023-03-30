@@ -1,34 +1,6 @@
-# CodeXGLUE -- Code Completion (line level)
+# Evaluating CodeGPT to obtain model output
 
 Here is the introduction and pipeline for line level code completion task.
-
-## Task Definition
-
-Complete the unfinished line given previous context. Models are evaluated by exact match and edit similarity.
-
-We propose line completion task to test model's ability to autocomplete a line. Majority code completion systems behave well in token level completion, but fail in completing an unfinished line like a method call with specific parameters, a function signature, a loop condition, a variable definition and so on. When a software develop finish one or more tokens of the current line, the line level completion model is expected to generate the entire line of syntactically correct code.
-
-## Dataset
-
-Line level code completion task shares the train/dev dataset with token level completion. After training a model on CodeCompletion-token, you could directly use it to test on line-level completion. 
-
-
-
-### Github Java Corpus line completion test set
-
-We create test set from Github Java Corpus token level code comepltion test set. In the same way as for Python, we randomly cut a file as two parts. The former part is the input context, outputs is the code sequence in the latter part until the first ; or \{ and \} token (including ; or \} token, but excluding \{ token).
-
-Test set is already at `dataset/javaCorpus/line_completion/test.json`.
-
-### Data Format
-
-Data is saved in json lines format files. Each line is a json object. To be consistent with token level code completion, codes have been tokenized. Here is an example of one line:
-```
-{
-  "input": "<s> from __future__ import absolute_import , division , print_function <EOL> from . _ithreads import AlreadyQuit <EOL> class Quit ( object ) : <EOL>",
-  "gt": "def __init__ ( self ) :"
-}
-```
 
 
 ### Prepare dataset
@@ -38,8 +10,21 @@ $ python process.py
 ```
 
 ### Infer the results
+Infer the results of surrogate models:
 ```
 $ cd /workspace/CodeCompletion-line/code
-$ bash infer.sh 
+$ bash infer.sh # can change `MODEL` in [microsoft/CodeGPT-small-java,gpt2] 
+$ bash infer_transformer.sh 
+$ bash infer_lstm.sh
+```
+
+Infer the results of CodeGPT with top-k decoding methods:
+```
+$ bash infer_victim_fix_K.sh # get the results with different K in top-k
+$ bash infer_victim_fix_T.sh # get the results with different temperature in top-k
+```
+
+Infer the results of victim models:
+```
 $ bash infer_victim.sh
 ```

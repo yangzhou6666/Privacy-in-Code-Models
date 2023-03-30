@@ -1,5 +1,5 @@
 export CUDA_VISIBLE_DEVICES=1 # modify
-MODEL=gpt2 #change model, # [microsoft/CodeGPT-small-java,microsoft/CodeGPT-small-java-adaptedGPT2,gpt2]
+MODEL=gpt2 #change model, # [microsoft/CodeGPT-small-java,gpt2]
 MASTER_PORT=77777 # modify
 MODE=surrogate 
 Percentage=0.01 

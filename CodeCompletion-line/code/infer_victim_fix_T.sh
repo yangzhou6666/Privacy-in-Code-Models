@@ -1,16 +1,16 @@
 export CUDA_VISIBLE_DEVICES=0
-MODE=victim # modify surrogate
+MODE=victim 
 
-MASTER_PORT=94257 # modify
+MASTER_PORT=94257 
 SURROGATE_MODEL_NAME=CodeGPT-small-java
 SAMPLE_RATIO=20
-LANG=java                       # set python for py150
+LANG=java                       
 
 for topk in 10 50 100
 do
-DATADIR="../dataset/javaCorpus/${SURROGATE_MODEL_NAME}/${SAMPLE_RATIO}/"
+DATADIR="../dataset/javaCorpus/${Percentage}/${SAMPLE_RATIO}/"
 LITFILE=../dataset/javaCorpus/literals.json
-PRETRAINDIR="../../CodeCompletion-token/save/javaCorpus/microsoft/CodeGPT-small-java-adaptedGPT2/100/checkpoint-last"
+PRETRAINDIR="../../CodeCompletion-token/save/javaCorpus/microsoft/CodeGPT-small-java-adaptedGPT2/100/checkpoint-epoch-4"
 LOGFILE="completion_javaCorpus_eval_${SURROGATE_MODEL_NAME}_${SAMPLE_RATIO}_victim.log"
 
 python -u run_lm.py \

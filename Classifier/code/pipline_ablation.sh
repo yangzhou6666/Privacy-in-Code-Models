@@ -1,6 +1,6 @@
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=2 # modify
 export MASTER_PORT=66699 # modify
-export SURROGATE_MODEL=microsoft/CodeGPT-small-java # modify
+export SURROGATE_MODEL=microsoft/CodeGPT-small-java 
 export VICTIM_MODEL=microsoft/CodeGPT-small-java-adaptedGPT2 # modify
 
 export ablation_mode=no_code #no_title/no_text/no_code
