@@ -2,6 +2,7 @@
 This repository is the replication package for the submission for ICSE 2024: **Title: Gotcha! This Model Uses My Code! Evaluating Membership Leakage Risks in Code Models**.
 
 Overall, this repository consists of the following steps:
+
 0. Configurating the environment
 1. Training CodeGPT for code completion
 2. Evaluating CodeGPT to obtain the model output
