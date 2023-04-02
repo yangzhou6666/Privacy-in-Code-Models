@@ -15,7 +15,7 @@ import torch
 import zlib
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
-
+from torch.nn.functional import softmax
 
 
 
@@ -71,8 +71,29 @@ def main():
             input_len = 1
             inputs = tokenizer(prompts, return_tensors="pt")
 
-        if args.temperature < 1.0:
-            raise NotImplementedError
+        if args.temperature > 1.0:
+            # use temperature decaying strategy
+            start_temperature = 10.0
+            end_temperature = 1.0
+            decay_tokens = 20
+
+            output_sequences = inputs['input_ids'].to(device)
+            with torch.no_grad():
+                for step in range(seq_len):
+                    outputs = model(output_sequences)
+                    logits = outputs.logits[:, -1, :]
+
+                    if step < decay_tokens:
+                        decay_ratio = step / decay_tokens
+                        current_temperature = start_temperature - (start_temperature - end_temperature) * decay_ratio
+                    else:
+                        current_temperature = end_temperature
+
+                    logits /= current_temperature
+                    probabilities = softmax(logits, dim=-1)
+                    next_token = torch.multinomial(probabilities, num_samples=1)
+
+                    output_sequences = torch.cat((output_sequences, next_token), dim=-1)
         else: 
             # batch generation
             output_sequences = model.generate(
@@ -84,12 +105,13 @@ def main():
                 top_p=1.0
             )
 
-            texts = tokenizer.batch_decode(output_sequences, skip_special_tokens=True)
+        texts = tokenizer.batch_decode(output_sequences, skip_special_tokens=True)
         
         for text in texts:
             existing_count += 1
             save_samples(path_to_save, text, existing_count)
             # store the results
+        raise
 
 
 def parse_arguments(argv):
