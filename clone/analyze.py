@@ -6,11 +6,20 @@ import json
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import multiprocessing
-
+import argparse
 
 logging.basicConfig(level = logging.INFO,format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str, required=True, help="The model to load")
+    parser.add_argument('--temperature', type=float, default=1.0, help="Start temperature")
+    parser.add_argument('--seq_len', type=int, default=256, help="The length of extracted sequence")
+    parser.add_argument('--top_k', type=int, default=40, help="sample from the top_k tokens output by the model")
+
+    return parser.parse_args()
 
 def process_file(log_path):
     memorization = {}
@@ -61,7 +70,13 @@ if __name__ == '__main__':
     root_dir = './'
 
     # from which model the results to be analyzed
-    config = {'model': 'codeparrot/codeparrot-small', 'temp': 1.0, 'len': 512, 'k': 24}
+    args = parse_arguments()
+    config = {
+        'model': args.model,
+        'temp': args.temperature,
+        'len': args.seq_len,
+        'k': args.top_k
+    }
     generated_folder = '{}-temp{}-len{}-k{}'.format(config['model'], config['temp'], config['len'], config['k'])
 
     step = 2 # * 100000
@@ -106,7 +121,6 @@ if __name__ == '__main__':
             count += 1
         logger.info("Number of unique fingerprints: {}".format(count))
 
-    exit()
 
     # store as json
     with open(memorization_path, 'w') as f:

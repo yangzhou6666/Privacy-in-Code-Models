@@ -2,9 +2,19 @@ import os
 import subprocess
 import concurrent.futures
 import logging
+import argparse
 
 logging.basicConfig(level = logging.INFO,format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str, required=True, help="The model to load")
+    parser.add_argument('--temperature', type=float, default=1.0, help="Start temperature")
+    parser.add_argument('--seq_len', type=int, default=256, help="The length of extracted sequence")
+    parser.add_argument('--top_k', type=int, default=40, help="sample from the top_k tokens output by the model")
+
+    return parser.parse_args()
 
 def run_command(command):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -17,12 +27,20 @@ def save_output(output, file_path):
 
 if __name__ == '__main__':
     root_dir = './'
-    config = {'model': 'codeparrot/codeparrot-small', 'temp': 1.0, 'len': 512, 'k':22}
+    args = parse_arguments()
+    config = {
+        'model': args.model,
+        'temp': args.temperature,
+        'len': args.seq_len,
+        'k': args.top_k
+    }
 
     generated_folder = '{}-temp{}-len{}-k{}'.format(config['model'], config['temp'], config['len'], config['k'])
     
     data_dir = os.path.join(root_dir, 'clone/save/codeparrot/codeparrot-clean')
+    # path to the training data
     tool_path = os.path.join(root_dir, 'clone/simian-2.5.10.jar')
+    # path to the clone detection tool
 
 
 
