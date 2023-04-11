@@ -1,128 +1,73 @@
 # Overview
 
+This repository 💻 is for our ASE submission 📚 that explores 🔍 the memorization 🧠 in code models.
+
 
 
 # Environment Configuration
 
 ## Conda
 
+The following code will create a conda environment `sample`. You can use `-n environment_name` to specify a new name.
 ```Shell
-pip install tqdm pandas
-pip install transformers==3.0.2
-python -m pip install huggingface_hub
-conda install pytorch==1.5.1 torchvision==0.6.1 cudatoolkit=10.1 -c pytorch
-pip install accelerate
-# You may need to update the pytorch installation command accordingly based on your CUDA version.
+conda env create -f environment.yml
+```
+<span style="background-color: yellow">You may need to update the pytorch installation command accordingly based on your CUDA version.</span>
+
+
+## Docker
+
+```Shell
+To-Do
 ```
 
+# Sample Outputs from code models
 
-
-
-## Build Docker Image
-
-```
-docker build -f Dockerfile -t privacy-code .
-```
-
-
-## Create Docker Container
-
-```
-docker run --name=privacy-code --gpus all -it -v YOU_LOCAL_REPO_PATH:/Privacy-in-Code-Models privacy-code:latest
-```
-
-Example: 
-```
-docker run --name=privacy-code --gpus all -it -v /mnt/hdd1/zyang/Privacy-in-Code-Models:/Privacy-in-Code-Models privacy-code:latest
-```
-
-# Run
-
-
-## Models
-
-* facebook/incoder-6B
-* facebook/incoder-1B
-* Salesforce/codegen-350M-multi
-* Salesforce/codegen-350M-nl
-* Salesforce/codegen-350M-mono
-* Salesforce/codegen-2B-multi
-* Salesforce/codegen-2B-nl
-* Salesforce/codegen-2B-mono
-* Salesforce/codegen-6B-multi
-* Salesforce/codegen-6B-nl
-* Salesforce/codegen-6B-mono
-* codeparrot/codeparrot-small
-* codeparrot/codeparrot
-
-You can `cd extract` and run `python cache_models.py` to download necessary models first.
-You can also skip this step and download models as needed.
-
-
-## Sample from Code Models
+First, `cd extract`. Then, execute the following command:
 
 ```bash
-cd extract
 
 python extract.py \
-    --model bigcode/santacoder \
-    --N 400000 \
-    --batch-size 400 \
-    --seq_len 256 \
-    --top_k 20 \
-    --gpu_id 0 &
-
-python extract.py \
-    --model codeparrot/codeparrot \
-    --N 400000 \
-    --batch-size 70 \
-    --seq_len 256 \
-    --top_k 21 \
-    --gpu_id 1 &
-
-
-python extract.py \
-    --model codeparrot/codeparrot-small \
-    --N 20000 \
-    --batch-size 200 \
-    --seq_len 512 \
-    --top_k 30 \
-    --gpu_id 2 &
-
-
-python extract.py \
-    --model codeparrot/codeparrot-small \
-    --N 20000 \
-    --batch-size 200 \
-    --seq_len 512 \
-    --top_k 35 \
-    --gpu_id 3 &
-
-
-
-python extract.py \
-    --model Salesforce/codegen-350M-mono \
-    --N 50000 \
-    --batch-size 80 \
-    --seq_len 768 \
-    --top_k 40 \
-    --gpu_id 7 &
+    --model codeparrot/codeparrot-small \ # the model to be sampled
+    --N 20000 \ # number of sampled outputs
+    --batch-size 64 \  # batch size, depend on your GPU memory
+    --seq_len 512 \  # token number of each output
+    --top_k 40 \ # randomly sample from top k tokens
+    --temperature 1.0 \ # temperature when sampling
+    --gpu_id 3 # GPU to use
 ```
+
+This command will result in a directory `extract/results/codeparrot/codeparrot-small-temp1.0-len512-k40`, which contains a directory `seperate`. This subdirectory will have many files, `1`, `2,` ..., `20000`; each file is an output from the model. 
+
+<span style="background-color: yellow">Note: you can repeated execute the command if you want to sample more files. New file IDs will start from `20001`.</span>
+
+Then, you can execute the following cammand:
 
 ```
 python merge.py \
-    --model Salesforce/codegen-350M-mono \
-    --seq_len 256 &
+    --model codeparrot/codeparrot-small \
+    --top_k 40 \
+    --temperature 1.0 \
+    --seq_len 512
 ```
 
+It will merge these outputs into a big file `all` and generate a file `map.json`. The json file records:
 
-## Memorization Analysis
+* File ID
+* MD5 of the file
+* the lines of this file in the merged `all`
 
+
+
+# Memorization Analysis
+
+Execute the following command to download the `codeparrot/codeparrot-clean` dataset, the training data for `codeparrot/codeparrot` models.
 ```
 python cache_data.py 2>&1 | tee download.log
 ```
 
-## Personally Identifiable Information Analysis
+<span style="background-color: yellow">Note: The dataset is over 50GB, so this process may takes a while, depending on your network status.</span>
+
 
 
 
