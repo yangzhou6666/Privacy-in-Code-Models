@@ -55,35 +55,3 @@ if __name__ == '__main__':
         split="train",
         save_dir=save_dir
     )
-
-    download_and_save_data(
-        data_name="bigcode/the-stack",
-        data_dir="data/java",
-        cache_dir=cache_dir,
-        split="train",
-        save_dir=save_dir
-    )
-
-    download_and_save_data(
-        data_name="bigcode/the-stack",
-        data_dir="data/python",
-        cache_dir=cache_dir,
-        split="train",
-        save_dir=save_dir
-    )
-
-    download_and_save_data(
-        data_name="bigcode/the-stack",
-        data_dir="data/javascript",
-        cache_dir=cache_dir,
-        split="train",
-        save_dir=save_dir
-    )
-
-    exit()
-    download_and_save_data(
-        data_name="codeparrot/codeparrot-clean",
-        cache_dir=cache_dir,
-        split="train",
-        save_dir=save_dir
-    )
