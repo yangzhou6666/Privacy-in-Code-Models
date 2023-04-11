@@ -43,7 +43,7 @@ This command will result in a directory `extract/results/codeparrot/codeparrot-s
 
 Then, you can execute the following cammand:
 
-```
+```shell
 python merge.py \
     --model codeparrot/codeparrot-small \
     --top_k 40 \
@@ -61,12 +61,89 @@ It will merge these outputs into a big file `all` and generate a file `map.json`
 
 # Memorization Analysis
 
+## Download the training data
+
 Execute the following command to download the `codeparrot/codeparrot-clean` dataset, the training data for `codeparrot/codeparrot` models.
 ```
 python cache_data.py 2>&1 | tee download.log
 ```
 
+This will generate a folder `clone/save/codeparrot/codeparrot-clean`, where the dataset is split into 52 subfiles.
+This allow us to analyze memorizations in parallel. 
+
 <span style="background-color: yellow">Note: The dataset is over 50GB, so this process may takes a while, depending on your network status.</span>
+
+## Finding Memorization
+
+In the root directory of this repository, run the following command:
+
+```shell
+python clone/scripts.py \
+    --model codeparrot/codeparrot-small \
+    --top_k 40 \
+    --temperature 1.0 \
+    --seq_len 512
+```
+<span style="background-color: yellow">Note: 🚨 Please note that initiating this step will spawn 52 🔄 processes and may consume up to 400 💾 GB of memory. If your 💻 computational resources are limited, we recommend 🔧 modifying the code in clone/scripts.py to reduce the number of processes running in parallel.</span>
+
+
+This command will analyze the code clones between the `all` file (all the outputs we sampled) and each subfiles of the training data we obtained in the previous step.
+It will store the results into `log/save/codeparrot/codeparrot-small-temp1.0-len512-k40`.
+This folder contains many log files, `0.log`, `1.log`, ..., `52.log`.
+Each log file stores the memorization analyze results.
+It could contain something like
+
+```javascript
+Found 6 duplicate lines with fingerprint 1176c28f7138b31961b65e38b6f7159b in the following files:
+ Between lines 187773 and 187778 in <your-folder>/extract/results/codeparrot/codeparrot-small-temp1.0-len512-k40/all
+ Between lines 17575538 and 17575543 in <your-folder>/clone/save/codeparrot/codeparrot-clean/0
+ Between lines 4699049 and 4699054 in <your-folder>/clone/save/codeparrot/codeparrot-clean/0
+ Between lines 2834883 and 2834888 in <your-folder>/clone/save/codeparrot/codeparrot-clean/0
+ Between lines 733896 and 733901 in <your-folder>/clone/save/codeparrot/codeparrot-clean/0
+```
+
+It means that:
+1. the identified clone has 6 lines.
+2. The MD5 of the clone is `1176c28f7138b31961b65e38b6f7159b`.
+3. The clone is found in multiple places, including both the `all` file (i.e., model outputs) and part of the  training data.
+
+In other word, the code model **memorizes contents from the training data!**
+
+## Analyze memorization
+
+Then, we run the following command to analyze the memorization:
+
+```shell
+python clone/analyze.py \
+    --model codeparrot/codeparrot-small \
+    --top_k 40 \
+    --temperature 1.0 \
+    --seq_len 512
+```
+
+This command analyzes each log file.
+
+1. extracts memorized contents (i.e., clones appearing in both `all` and subfile of training data) from each log file
+2. merge memorized contents in each subfile of training data (using fingerprints), and save to `log/save/codeparrot/codeparrot-small-temp1.0-len512-k40/stats/memorization.json`
+3. analyze the memorized contents.
+
+
+The saved `memorization.json` contains:
+
+```json
+{
+    "3a2ebcaa1123523fe878de0460533174": {
+        "train": 3289,
+        "extract": 330,
+        "len": 6
+    },
+    ...
+}
+```
+
+The key is the fingerprint of the memorized content. `"train": 3289` means it appears 3289 times in the training data and `"extract": 330` means that it appears 330 times in the model outputs. `"len": 6` means the length of the memorized content is 6 lines.
+
+
 
 
 
