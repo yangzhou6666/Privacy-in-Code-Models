@@ -143,6 +143,49 @@ The saved `memorization.json` contains:
 
 The key is the fingerprint of the memorized content. `"train": 3289` means it appears 3289 times in the training data and `"extract": 330` means that it appears 330 times in the model outputs. `"len": 6` means the length of the memorized content is 6 lines.
 
+Then, we run the following command to get the memorization content:
+```shell
+python log/analyze.py \
+    --model codeparrot/codeparrot-small \
+    --top_k 40 \
+    --temperature 1.0 \
+    --seq_len 512
+```
+This command analyzes each log file.
+
+1. extracts memorized contents (i.e., clones appearing in both `all` and subfile of training data) from each log file
+2. store the memorized contents to `log/save/codeparrot/codeparrot-small-temp1.0-len512-k40/analyze/`
+
+for each `x.txt` is corresponding to `x.log` and `all.txt` merges all the reslusts in `x.txt`.
+
+the `txt` contains
+```txt
+>>>>>>>>>>fingerprints dc928385dd77b24d74cbf823d2ad9305 >>>>>>>>>>>>>
+    'sphinx.ext.todo',
+    'sphinx.ext.coverage',
+]
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ['_templates']
+# The suffix(es) of source filenames.
+# You can specify multiple suffix as a list of string:
+++++fingerprints dc928385dd77b24d74cbf823d2ad9305 ++++
+   'sphinx.ext.todo',
+   'sphinx.ext.coverage'
+]
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ['_templates']
+# The suffix(es) of source filenames.
+# You can specify multiple suffix as a list of string:
+++++fingerprints dc928385dd77b24d74cbf823d2ad9305 ++++
+<<<<<<<<<<fingerprints dc928385dd77b24d74cbf823d2ad9305 <<<<<<<<<<
+```
+where the 
+
+1. `>>>>>>>>>>fingerprints dc928385dd77b24d74cbf823d2ad9305 >>>>>>>>>>>>>` is the beigining of the memorized contents and  `dc928385dd77b24d74cbf823d2ad9305` is the md5
+2. if the files with the same md5 have more than one memorized content, we use  `++++fingerprints dc928385dd77b24d74cbf823d2ad9305 ++++` to split each memorized contents
+3. `<<<<<<<<<<fingerprints dc928385dd77b24d74cbf823d2ad9305 <<<<<<<<<<` is the end of memorized contents.
+
+
 
 
 
