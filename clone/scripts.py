@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
 
     step = 2 # * 100000
-    start = 4
+    start = 0
     end = 20 # * 100000
     # process in chunks
     for size in range(start, end, step):
@@ -60,12 +60,13 @@ if __name__ == '__main__':
 
         # build the commands to run
         commands = []
-        for data in os.listdir(data_dir):
-            data_path = os.path.join(data_dir, data)
+        # the number of training data split is 53
+        for i in range(53):
+            data_path = os.path.join(data_dir, '{}'.format(i))
+            assert os.path.exists(data_path), "File {} does not exist".format(data_path)
             commands.append(['java', '-jar', tool_path, data_path, file_path])
 
         logger.info("Batch {}-{} started".format(_start, _end))
-        
         # launch the commands in parallel using a process pool
         with concurrent.futures.ProcessPoolExecutor() as executor:
             futures = [executor.submit(run_command, command) for command in commands]
