@@ -156,7 +156,7 @@ This command analyzes each log file.
 1. extracts memorized contents (i.e., clones appearing in both `all` and subfile of training data) from each log file
 2. store the memorized contents to `log/save/codeparrot/codeparrot-small-temp1.0-len512-k40/analyze/`
 
-for each `x.txt` is corresponding to `x.log` and `all.txt` merges all the reslusts in `x.txt`.
+Each `x.txt` is corresponding to `x.log` and `all.txt` merges all the reslusts in `x.txt`.
 
 the `txt` contains
 ```txt
@@ -188,6 +188,69 @@ where the
 
 
 
+## Sample with prompts
+We have two kinds of prompts:
 
+1. specify by humans
+2. gets from samples
 
+### specify by humans
+if we want to specify the prompts by humans, we can run:
+```shell
+python extract/extract.py \
+    --model codeparrot/codeparrot-small \ # the model to be sampled
+    --N 20000 \ # number of sampled outputs
+    --batch-size 64 \  # batch size, depend on your GPU memory
+    --seq_len 512 \  # token number of each output
+    --top_k 40 \ # randomly sample from top k tokens
+    --temperature 1.0 \ # temperature when sampling
+    --gpu_id 3 \ # GPU to use
+    --prompt_mode direct_prompt \
+    --prompt xxx \ # The prompt to use for generation
+    --internet-sampling
+```
+### gets from samples
+if we want to gets the prompt from the samples, we can run:
+```shell
+python log/analyze.py \
+    --model codeparrot/codeparrot-small \
+    --top_k 40 \
+    --temperature 1.0 \
+    --seq_len 512 \
+    --mode extract_prompt
+```
+it will generate `extract_prompt.json` in `log/save/codeparrot/codeparrot-small-temp1.0-len512-k40/analyze/` and it contains:
+```json
+{
+    "eb17e3d78803b21a4f6144d2f8b639edf3ebf5e3": {
+        "prompt": "Licensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\nhttp://www.apache.org/licenses/LICENSE-2.0\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.\n\"\"\"\nimport os\nimport sys",
+        "occurrence": 10,
+        "fingerprints": "27b096e8c460efa8edde535e9fdbb28d"
+    },
+    ...
+}
+```
+where the `eb17e3d78803b21a4f6144d2f8b639edf3ebf5e3` is the `sha1` of the `prompt` and the value of `prompt` is getting from `all.txt`, and `occurrence` is the times that the prompts shown in `all.txt`.
 
+Then we run:
+```shell
+python extract/extract.py \
+    --model codeparrot/codeparrot-small \ # the model to be sampled
+    --N 20000 \ # number of sampled outputs
+    --batch-size 64 \  # batch size, depend on your GPU memory
+    --seq_len 512 \  # token number of each output
+    --top_k 40 \ # randomly sample from top k tokens
+    --temperature 1.0 \ # temperature when sampling
+    --gpu_id 3 \ # GPU to use
+    --prompt_mode single_md5 \
+    --prompt log/save/codeparrot/codeparrot-small-temp1.0-len512-k40/analyze/extract_prompt.json \ # The the path to a file containing the prompt(i.e, the path of extract_prompt.json)
+    ----prompt_hash  eb17e3d78803b21a4f6144d2f8b639edf3ebf5e3 \ #The prompt  sha1_hash in the file
+    --internet-sampling
+```
+
+### the results of sampling with prompts
+This command will result in a directory `extract/results/codeparrot/codeparrot-small-temp1.0-len512-k40/eb17e3d78803b21a4f6144d2f8b639edf3ebf5e3`, which contains a directory `internet`. This subdirectory will have many files, `1`, `2`, ..., `20000`; each file is an output from the model and `prompts.txt` contains the used prompts.
+
+For the humans defined prompts, the `eb17e3d78803b21a4f6144d2f8b639edf3ebf5e3` in the dictionary path will be replaced by the sha hash caculted from the  `args.prompt`
+
+[🛎️]: The output remove the prompts txt so if you want to do further analyze, you need to add them back to the top if you need. 
