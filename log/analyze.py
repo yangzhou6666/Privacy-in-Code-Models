@@ -3,6 +3,8 @@ import os
 import re
 import linecache
 from tqdm import tqdm
+import hashlib
+import json
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', 
@@ -16,21 +18,33 @@ def get_args():
     parser.add_argument('--num_files',
                         type=int,
                         default=53)
+    parser.add_argument('--mode',
+                        type=str,
+                        choices=['analyze', 'extract_prompt','all'],
+                        default='analyze'
+    )
+    parser.add_argument('--file_begin_number',
+                        type=int,
+                        default=0
+    )
     args = parser.parse_args()
     return args
 
-def main():
-    args = get_args()
+def main(args):
+    # folder_path = os.path.join('save', args.model+'-temp'+str(args.temperature)+'-len'+str(args.seq_len)+'-k'+str(args.top_k), f'{args.file_begin_number}-{200000+args.file_begin_number}')
     folder_path = os.path.join('save', args.model+'-temp'+str(args.temperature)+'-len'+str(args.seq_len)+'-k'+str(args.top_k))
     save_path = os.path.join(folder_path, 'analyze')
     if not os.path.exists(save_path):
         os.mkdir(save_path)
     all_result = {}
+
     for i in range(args.num_files):
         i = str(i)
         print("[now processing file]: ", i+".log")
+
         result = {}
         file_path = os.path.join(folder_path, i+'.log')
+
         GETLINE = False
         md5 = None
         lines= None
@@ -38,6 +52,7 @@ def main():
         path_extract = False
         GETLINE = False
         WRITELINE = False
+
         with open(file_path, 'r') as f:
             lines = f.readlines()
             for line in tqdm(lines,total=len(lines)):
@@ -47,10 +62,13 @@ def main():
                         md5 = re.search(r'fingerprint\s+([a-fA-F\d]{32})', line).group(1)
                     except:
                         print(line) #ending with summary which is starting with Found
+
+                    
                     path_all = False
                     path_extract = False
                     GETLINE = False
                     WRITELINE = False
+
                 elif line.startswith('Between'): #start with between
                     if WRITELINE:
                         continue
@@ -68,7 +86,7 @@ def main():
                         lines = ''.join(lines)
                         GETLINE = True
                     
-                    if program_file_path.split('/')[-1] == 'all':
+                    if 'all' in program_file_path.split('/')[-1]:
                         path_all = True
                     else:
                         path_extract = True
@@ -112,18 +130,66 @@ def main():
     print("[NUM of duplicate]: ", len(all_result))
     print("===="*10)
 
+def extract_prompt(args):
+    '''
+    {
+        'hash_value': {
+            'prompt': 'prompt',
+            'occurrence': xxx,
+            'fignerprints': []
+        }
+    }
+    '''
+    # folder_path = os.path.join('save', args.model+'-temp'+str(args.temperature)+'-len'+str(args.seq_len)+'-k'+str(args.top_k), f'{args.file_begin_number}-{200000+args.file_begin_number}')
+    folder_path = os.path.join('./log/save', args.model+'-temp'+str(args.temperature)+'-len'+str(args.seq_len)+'-k'+str(args.top_k))
+    saved_path = os.path.join(folder_path, 'analyze')
+
+    extract_prompt = {}
+    with open(os.path.join(saved_path, 'all.txt'), 'r') as f:
+        lines = f.readlines()
+        prompt = None
+        md5 = None
+        for line in lines:
+            line = line.strip()
+            if line.startswith('>>>>>>>>>>'):
+                prompt = None
+                try:
+                    md5 = re.search(r'fingerprints\s+([a-fA-F\d]{32})', line).group(1)
+                except:
+                    print(line)
+                    raise
+            elif line.startswith('<<<<<<<<<<') or line.startswith('++++'):
+                if prompt is None: #先+++再<<<<<
+                    continue
+                hash_value = hashlib.sha1(prompt.encode('utf-8')).hexdigest()
+                if hash_value not in extract_prompt:
+                    extract_prompt[hash_value] = {
+                        'prompt': prompt,
+                        'occurrence': 1,
+                        'fingerprints': md5
+                    }
+                else:
+                    extract_prompt[hash_value]['occurrence'] += 1
+                prompt = None
+            else:
+                if prompt is None:
+                    prompt = line
+                else:
+                    prompt += '\n'
+                    prompt += line
+
+    extract_prompt = dict(sorted(extract_prompt.items(), key=lambda x: x[1]["occurrence"],reverse=True))
+    with open(os.path.join(saved_path, 'extract_prompt.json'), 'w') as f:
+        json.dump(extract_prompt, f, indent=4)
+
 if __name__ == '__main__':
-    main()
-
-
-
-
-
-
-                    
-    
-
-
-
-
-    
+    args = get_args()
+    if args.mode == 'analyze':
+        main(args)
+    elif args.mode == 'extract_prompt':
+        extract_prompt(args)
+    elif args.mode == 'all':
+        main(args)
+        extract_prompt(args)
+    else:
+        raise ValueError("mode should be one of ['analyze', 'extract_prompt','all']")
