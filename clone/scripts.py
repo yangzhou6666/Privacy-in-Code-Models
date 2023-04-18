@@ -14,6 +14,11 @@ def parse_arguments():
     parser.add_argument('--seq_len', type=int, default=256, help="The length of extracted sequence")
     parser.add_argument('--top_k', type=int, default=40, help="sample from the top_k tokens output by the model")
 
+    parser.add_argument('--internet-sampling', action='store_true', help="condition the generation on the internet")
+    parser.add_argument('--prompt_mode', type=str, default="single_md5",choices=["single_md5","direct_prompt"], help="The mode of the prompt to use for generation")
+    parser.add_argument('--prompt', type=str, default="", help="The prompt to use for generation(can also be the path to a file containing the prompt)")
+    parser.add_argument('--prompt_hash', type=str, default="", help="The hash of the prompt to use for generation")
+
     return parser.parse_args()
 
 def run_command(command):
@@ -36,7 +41,15 @@ if __name__ == '__main__':
     }
 
     generated_folder = '{}-temp{}-len{}-k{}'.format(config['model'], config['temp'], config['len'], config['k'])
-    
+    # if not args.internet_sampling:
+    #     generated_folder = '{}-temp{}-len{}-k{}'.format(config['model'], config['temp'], config['len'], config['k'])
+    # else:
+    #     if args.prompt_mode == 'single_md5':
+    #         hash_value = args.prompt_hash
+    #     elif args.prompt_mode == 'direct_prompt':
+    #         hash_value = hashlib.sha1(args.prompt.encode('utf-8')).hexdigest()
+    #         args.prompt_hash = hash_value
+    #     generated_folder = '{}-temp{}-len{}-k{}/internet/{}'.format(config['model'], config['temp'], config['len'], config['k'], hash_value)
     data_dir = os.path.join(root_dir, 'clone/save/codeparrot/codeparrot-clean')
     # path to the training data
     tool_path = os.path.join(root_dir, 'clone/simian-2.5.10.jar')
@@ -51,11 +64,23 @@ if __name__ == '__main__':
     for size in range(start, end, step):
         _start = size * 100000
         _end = (size + step) * 100000
-        file_path = os.path.join(root_dir, 'extract/results/{}/all_{}-{}'.format(generated_folder, _start, _end))
+        if not args.internet_sampling:
+            file_path = os.path.join(root_dir, 'extract/results/{}/all_{}-{}'.format(generated_folder, _start, _end))
+        else:
+            file_path = os.path.join(root_dir, 'extract/results/{}/all_{}-{}-{}'.format(generated_folder,args.prompt_hash,_start, _end))
         assert os.path.exists(file_path), "File {} does not exist".format(file_path)
 
         # create log dir
-        log_dir = os.path.join(root_dir, 'log/save/', generated_folder, "{}-{}".format(_start, _end))
+        if not args.internet_sampling:
+            log_dir = os.path.join(root_dir, 'log/save/', generated_folder, "{}-{}".format(_start, _end))
+        else:
+            if args.prompt_mode == 'single_md5':
+                hash_value = args.prompt_hash
+            elif args.prompt_mode == 'direct_prompt':
+                hash_value = hashlib.sha1(args.prompt.encode('utf-8')).hexdigest()
+                args.prompt_hash = hash_value
+            log_dir = os.path.join(root_dir, 'log/save/', generated_folder,args.prompt_hash, "{}-{}".format(_start, _end))
+        logger.info(f'[save dict]: {log_dir}')
         os.makedirs(log_dir, exist_ok=True)
 
         # build the commands to run
