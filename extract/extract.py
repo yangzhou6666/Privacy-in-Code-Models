@@ -59,7 +59,7 @@ def main():
             hash_value = args.prompt_hash
         elif args.prompt_mode == 'direct_prompt':
             hash_value = hashlib.sha1(args.prompt.encode('utf-8')).hexdigest()
-        path_to_save = 'results/{}-temp{}-len{}-k{}/internet'.format(model_name, args.temperature, args.seq_len, args.top_k,hash_value)
+        path_to_save = 'results/{}-temp{}-len{}-k{}/internet/{}'.format(model_name, args.temperature, args.seq_len, args.top_k,hash_value)
         os.makedirs(path_to_save, exist_ok=True)
         # set the prompts
         prompts_txt = get_prompts(args)
@@ -126,7 +126,7 @@ def main():
             existing_count += 1
             save_samples(path_to_save, text, existing_count)
             # store the results
-        raise
+        # raise
 
 def get_prompts(args):
     if args.prompt_mode == "single_md5":
