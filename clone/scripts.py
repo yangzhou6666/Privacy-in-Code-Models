@@ -3,6 +3,8 @@ import subprocess
 import concurrent.futures
 import logging
 import argparse
+import re
+import hashlib
 
 logging.basicConfig(level = logging.INFO,format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -18,6 +20,7 @@ def parse_arguments():
     parser.add_argument('--prompt_mode', type=str, default="single_md5",choices=["single_md5","direct_prompt"], help="The mode of the prompt to use for generation")
     parser.add_argument('--prompt', type=str, default="", help="The prompt to use for generation(can also be the path to a file containing the prompt)")
     parser.add_argument('--prompt_hash', type=str, default="", help="The hash of the prompt to use for generation")
+    parser.add_argument("--tool_path",type=str,default=None)
 
     return parser.parse_args()
 
@@ -50,10 +53,23 @@ if __name__ == '__main__':
     #         hash_value = hashlib.sha1(args.prompt.encode('utf-8')).hexdigest()
     #         args.prompt_hash = hash_value
     #     generated_folder = '{}-temp{}-len{}-k{}/internet/{}'.format(config['model'], config['temp'], config['len'], config['k'], hash_value)
-    data_dir = os.path.join(root_dir, 'clone/save/codeparrot/codeparrot-clean')
-    # path to the training data
-    tool_path = os.path.join(root_dir, 'clone/simian-2.5.10.jar')
-    # path to the clone detection tool
+    
+    # path to the training data & the clone detection tool
+    if args.tool_path is None:
+        tool_path = os.path.join(root_dir, 'clone/simian-2.5.10.jar')
+        data_dir = os.path.join(root_dir, 'clone/save/codeparrot/codeparrot-clean')
+    else:
+        tool_path = args.tool_path
+        data_dir = tool_path.replace("simian-2.5.10.jar","save/codeparrot/codeparrot-clean")
+
+    if args.internet_sampling:
+        if args.prompt_mode == 'direct_prompt':
+            if isinstance(args.prompt, str) and len(args.prompt) == 40 and re.match("^[a-f0-9]+$", args.prompt):
+                args.prompt_hash = args.prompt
+            else:
+                hash_value = hashlib.sha1(args.prompt.encode('utf-8')).hexdigest()
+                args.prompt_hash = hash_value
+
 
 
 
@@ -62,23 +78,23 @@ if __name__ == '__main__':
     end = 20 # * 100000
     # process in chunks
     for size in range(start, end, step):
-        _start = size * 100000
-        _end = (size + step) * 100000
+        # _start = size * 100000
+        # _end = (size + step) * 100000
+        _start = size * 100000 + 1
+        _end = (size + step) * 100000 + 96
         if not args.internet_sampling:
             file_path = os.path.join(root_dir, 'extract/results/{}/all_{}-{}'.format(generated_folder, _start, _end))
         else:
             file_path = os.path.join(root_dir, 'extract/results/{}/all_{}-{}-{}'.format(generated_folder,args.prompt_hash,_start, _end))
+            if not os.path.exists(file_path):
+                file_path = os.path.join(root_dir, 'results/{}/all_{}-{}-{}'.format(generated_folder,args.prompt_hash,_start, _end))
+        print(os.path.abspath(file_path))
         assert os.path.exists(file_path), "File {} does not exist".format(file_path)
 
         # create log dir
         if not args.internet_sampling:
             log_dir = os.path.join(root_dir, 'log/save/', generated_folder, "{}-{}".format(_start, _end))
         else:
-            if args.prompt_mode == 'single_md5':
-                hash_value = args.prompt_hash
-            elif args.prompt_mode == 'direct_prompt':
-                hash_value = hashlib.sha1(args.prompt.encode('utf-8')).hexdigest()
-                args.prompt_hash = hash_value
             log_dir = os.path.join(root_dir, 'log/save/', generated_folder,args.prompt_hash, "{}-{}".format(_start, _end))
         logger.info(f'[save dict]: {log_dir}')
         os.makedirs(log_dir, exist_ok=True)

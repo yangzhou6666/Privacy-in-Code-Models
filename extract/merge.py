@@ -9,6 +9,7 @@ import logging
 import numpy as np
 import multiprocessing
 import hashlib
+import re
 # set up the logger
 logger = logging.getLogger('user_actions')
 logger.setLevel(logging.INFO)
@@ -90,10 +91,13 @@ if __name__ == '__main__':
         if args.prompt_mode == 'single_md5':
             hash_value = args.prompt_hash
         elif args.prompt_mode == 'direct_prompt':
-            hash_value = hashlib.sha1(args.prompt.encode('utf-8')).hexdigest()
-            args.prompt_hash = hash_value
-        # result_save_path = result_save_path = os.path.join(result_path, 'internet',hash_value)
-        result_save_path = result_save_path = os.path.join(result_path, 'internet')
+            if isinstance(args.prompt, str) and len(args.prompt) == 40 and re.match("^[a-f0-9]+$", args.prompt):
+                args.prompt_hash = args.prompt
+            else:
+                hash_value = hashlib.sha1(args.prompt.encode('utf-8')).hexdigest()
+                args.prompt_hash = hash_value
+        result_save_path = result_save_path = os.path.join(result_path, 'internet',args.prompt_hash)
+        # result_save_path = result_save_path = os.path.join(result_path, 'internet')
     files = os.listdir(result_save_path)
     logger.info("Found {} files".format(len(files)))
 

@@ -4,6 +4,7 @@ memorized samples from the training set.
 """
 
 import logging
+import hashlib
 logging.basicConfig(level='ERROR')
 
 import argparse
@@ -60,7 +61,7 @@ def main():
         elif args.prompt_mode == 'direct_prompt':
             hash_value = hashlib.sha1(args.prompt.encode('utf-8')).hexdigest()
         path_to_save = 'results/{}-temp{}-len{}-k{}/internet/{}'.format(model_name, args.temperature, args.seq_len, args.top_k,hash_value)
-        os.makedirs(path_to_save, exist_ok=True)
+        os.makedirs(path_to_save)
         # set the prompts
         prompts_txt = get_prompts(args)
         prompts = prompts_txt * args.batch_size
@@ -120,6 +121,7 @@ def main():
 
         texts = tokenizer.batch_decode(output_sequences, skip_special_tokens=True)
         
+        # undo: check if we write at the end rather than every batch, wether we can save some time
         for text in texts:
             if args.internet_sampling:
                 text = text[len(prompts_txt[0]):]
