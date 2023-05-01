@@ -25,13 +25,20 @@ def get_args():
     )
     parser.add_argument('--file_begin_number',
                         type=int,
-                        default=0
+                        default=1
+    )
+    parser.add_argument('--file_end_number',
+                        type=int,
+                        default=20000
     )
 
     parser.add_argument('--internet-sampling', action='store_true', help="condition the generation on the internet")
     parser.add_argument('--prompt_mode', type=str, default="single_md5",choices=["single_md5","direct_prompt"], help="The mode of the prompt to use for generation")
     parser.add_argument('--prompt', type=str, default="", help="The prompt to use for generation(can also be the path to a file containing the prompt)")
     parser.add_argument('--prompt_hash', type=str, default="", help="The hash of the prompt to use for generation")
+
+
+    parser.add_argument('--save_begin_end_list', action='store_true', help="save the begin and end list")
 
     args = parser.parse_args()
     return args
@@ -49,12 +56,12 @@ def main(args):
                 hash_value = hashlib.sha1(args.prompt.encode('utf-8')).hexdigest()
                 args.prompt_hash = hash_value
         folder_path = os.path.join(folder_path,args.prompt_hash)
-    folder_path = os.path.join(folder_path, f'{args.file_begin_number}-{200000+args.file_begin_number}')
+    # folder_path = os.path.join(folder_path, f'{args.file_begin_number}-{args.file_end_number}')
     save_path = os.path.join(folder_path, 'analyze')
     if not os.path.exists(save_path):
         os.mkdir(save_path)
     all_result = {}
-
+    begin_end_list = []
     for i in range(args.num_files):
         i = str(i)
         print("[now processing file]: ", i+".log")
@@ -69,6 +76,9 @@ def main(args):
         path_extract = False
         GETLINE = False
         WRITELINE = False
+        
+        WRITBEGINEND = False
+        temp_begin_end_list = []
 
         with open(file_path, 'r') as f:
             lines = f.readlines()
@@ -80,14 +90,18 @@ def main(args):
                     except:
                         print(line) #ending with summary which is starting with Found
 
-                    
+                    if WRITBEGINEND:
+                        begin_end_list.extend(temp_begin_end_list)
+
                     path_all = False
                     path_extract = False
                     GETLINE = False
                     WRITELINE = False
+                    WRITBEGINEND = False
+                    temp_begin_end_list = []
 
                 elif line.startswith('Between'): #start with between
-                    if WRITELINE:
+                    if WRITELINE and not args.save_begin_end_list: #如果不保存begin_end_list才能快进
                         continue
                     
                     matches = re.search(r'Between lines (\d+) and (\d+) in (.+)', line)
@@ -105,9 +119,11 @@ def main(args):
                     
                     if 'all' in program_file_path.split('/')[-1]:
                         path_all = True
+                        temp_begin_end_list.append((line_start, line_end))
                     else:
                         path_extract = True
                     if path_all and path_extract:
+                        WRITBEGINEND = True
                         if md5 not in result:
                             result[md5] = [lines]
                         else:
@@ -146,6 +162,11 @@ def main(args):
     print("===="*10)
     print("[NUM of duplicate]: ", len(all_result))
     print("===="*10)
+
+    if args.save_begin_end_list:
+        with open(os.path.join(save_path, 'begin_end_list.txt'), 'w') as f:
+            for begin, end in begin_end_list:
+                f.write(f"{begin} {end}\n")
 
 def extract_prompt(args):
     '''
