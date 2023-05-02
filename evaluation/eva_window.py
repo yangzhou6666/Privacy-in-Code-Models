@@ -20,6 +20,7 @@ def print_best(memorized_content_index,metric, samples, name1, scores1, name2=No
     """
     idxs = np.argsort(metric)[::-1][:n]
     memorized_content_num = 0
+    top_n_output = []
 
     for i, idx in enumerate(idxs):
         if idx in memorized_content_index:
@@ -33,10 +34,20 @@ def print_best(memorized_content_index,metric, samples, name1, scores1, name2=No
         if i > args.output_n:
             continue
         logger.info(samples[idx])
+        top_n_output.append((idx+1,samples[idx]))
         logger.info('\n')
         logger.info('\n')
     logger.info(f"[memorized content num]: {memorized_content_num}")
     logger.info(f"[memorized content ratio]: {memorized_content_num/n}")
+    return top_n_output
+
+def save_the_best(save_path,res,name):
+    file_path = os.path.join(save_path,f'{name}.csv')
+    idx = [i[0] for i in res]
+    content = [i[1] for i in res]
+    df = pd.DataFrame({'idx':idx,'content':content})
+    df.to_csv(file_path,index=False)
+
 
 def get_model_and_tokenizer(model_name):
     logger.info("Loading model {} ...".format(model_name))
@@ -86,6 +97,7 @@ def parse_arguments(argv):
 
     parser.add_argument('--extract_n', type=int, default=100, help="Number of ranked samples to extract")
     parser.add_argument('--output_n', type=int, default=100, help="Number of ranked samples to output")
+    parser.add_argument('--save_output', action='store_true', help="save the output to a file")
     parser.add_argument('--extract_mode', type=str, default="small-first", choices=["small-first","large-first"], help="The mode of the extraction")
 
 
@@ -240,7 +252,7 @@ def main():
     # Sort by perplexity
     metric = -np.log(scores["model_1"])
     logger.info(f"======== top sample by {args.model_1} perplexity: ========")
-    print_best(memorized_content_index,metric, samples, "PPL", scores["model_1"],n=args.extract_n)
+    ppl_res = print_best(memorized_content_index,metric, samples, "PPL", scores["model_1"],n=args.extract_n)
     logger.info('\n')
     logger.info('\n')
 
@@ -251,14 +263,22 @@ def main():
     else:
         metric = np.log(scores["model_2"]) / np.log(scores["model_1"])
     logger.info(f"======== top sample by ratio of {args.model_1} and {args.model_2} perplexities: ========")
-    print_best(memorized_content_index,metric, samples, f"PPL-{args.model_1}", scores["model_1"], f"PPL-{args.model_2}", scores["model_2"],n=args.extract_n)
+    comparing_ppl_res = print_best(memorized_content_index,metric, samples, f"PPL-{args.model_1}", scores["model_1"], f"PPL-{args.model_2}", scores["model_2"],n=args.extract_n)
     logger.info('\n')
     logger.info('\n')
 
     # Sort by ratio of Zlib entropy and XL perplexity
     metric = scores["zlib"] / np.log(scores["model_1"])
     logger.info(f"======== top sample by ratio of Zlib entropy and {args.model_1} perplexity: ========")
-    print_best(memorized_content_index,metric, samples, f"PPL-{args.model_1}", scores["model_1"], "Zlib", scores["zlib"],n=args.extract_n)
+    zlib_res = print_best(memorized_content_index,metric, samples, f"PPL-{args.model_1}", scores["model_1"], "Zlib", scores["zlib"],n=args.extract_n)
+
+    if args.save_output:
+        save_res_path = 'results-window/{}-temp{}-len{}-k{}'.format(args.model_1, args.temperature, args.seq_len, args.top_k)
+        os.makedirs(save_res_path, exist_ok=True)
+        save_the_best(save_res_path, ppl_res, 'ppl')
+        save_the_best(save_res_path, comparing_ppl_res, 'comparing_ppl')
+        save_the_best(save_res_path, zlib_res, 'zlib')
+        logger.info(f"======== save the results to {save_res_path} ========")
 
 if __name__ == "__main__":
     args = parse_arguments(sys.argv[1:])
