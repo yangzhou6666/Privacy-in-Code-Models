@@ -13,6 +13,8 @@ from tqdm import tqdm
 from torch.nn.functional import softmax
 import json
 import re
+import pandas as pd
+from utils import get_memorized_flag,get_exact_memorized_content_dict
 def print_best(memorized_content_index,metric, samples, name1, scores1, name2=None, scores2=None, n=10):
     """
     logger.info the `n` best samples according to the given `metric`
@@ -20,6 +22,7 @@ def print_best(memorized_content_index,metric, samples, name1, scores1, name2=No
     idxs = np.argsort(metric)[::-1][:n]
     memorized_content_num = 0
     top_n_output = []
+    top_n_output_cleaned = []
 
     for i, idx in enumerate(idxs):
         if idx in memorized_content_index:
@@ -34,11 +37,13 @@ def print_best(memorized_content_index,metric, samples, name1, scores1, name2=No
             continue
         logger.info(samples[idx])
         top_n_output.append((idx+1,samples[idx]))
+        if args.save_cleaned:
+            top_n_output_cleaned.append((idx+1,args.cleaned_samples[idx+1])) # func:get_exact_memorized_content_dict里index从1开始
         logger.info('\n')
         logger.info('\n')
     logger.info(f"[memorized content num]: {memorized_content_num}")
     logger.info(f"[memorized content ratio]: {memorized_content_num/n}")
-    return top_n_output
+    return top_n_output,top_n_output_cleaned
 
 def save_the_best(save_path,res,name):
     file_path = os.path.join(save_path,f'{name}.csv')
@@ -62,30 +67,7 @@ def get_model_and_tokenizer(model_name):
     logger.info("Model {} is loaded.".format(model_name))
     return tokenizer, model
 
-def get_memorized_flag(root_path):
-    map_file_path = os.path.join(root_path, 'map.json')
-    if not os.path.exists(map_file_path):
-        raise
-    with open(map_file_path, 'r') as f:
-        map_data = json.load(f)
-    labels = [int(k) for k in map_data.keys()]
-    end_values = [v['end'] for v in map_data.values()]
-    start_values = [v['start'] for v in map_data.values()]
-    flag_values = []
-    for i,label in enumerate(labels):
-        flag_values.extend([label] * (end_values[i] - start_values[i] + 1))
-    begin_list = []
-    begin_end_list_file = os.path.join(root_path.replace('extract/results','log/save'),'analyze','begin_end_list.txt')
-    with open(begin_end_list_file, 'r') as f:
-        for line in f:
-            begin,end = line.strip().split(' ')
-            begin_list.append(int(begin))
-    memorized_content_index = set()
-    for b in tqdm(begin_list,total=len(begin_list)):
-        b -= 1 # list index starts from 0
-        flag = flag_values[b]
-        memorized_content_index.add(flag-1) # list index starts from 0
-    return list(memorized_content_index)
+
 
 
 def parse_arguments(argv):
@@ -95,8 +77,9 @@ def parse_arguments(argv):
     parser.add_argument('--N', type=int, default=20000, help="Number of samples to generate")
 
     parser.add_argument('--extract_n', type=int, default=10, help="Number of ranked samples to extract")
-    parser.add_argument('--output_n', type=int, default=10, help="Number of ranked samples to output")
+    parser.add_argument('--output_n', type=int, default=100, help="Number of ranked samples to output")
     parser.add_argument('--save_output', action='store_true', help="save the output to a file")
+    parser.add_argument('--save_cleaned', action='store_true', help="save the cleaned output to a file")
     parser.add_argument('--extract_mode', type=str, default="small-first", choices=["small-first","large-first"], help="The mode of the extraction")
 
 
@@ -130,7 +113,8 @@ def main():
         pass
     
     memorized_content_index = get_memorized_flag(root_path)
-
+    if args.save_cleaned:
+        args.cleaned_samples = get_exact_memorized_content_dict(root_path)
     logger.info("[Basic Info]")
     logger.info("Model 1: {}".format(args.model_1))
     logger.info("Model 2: {}".format(args.model_2))
@@ -194,7 +178,7 @@ def main():
     # Sort by perplexity
     metric = -np.log(scores["model_1"])
     logger.info(f"======== top sample by {args.model_1} perplexity: ========")
-    ppl_res = print_best(memorized_content_index,metric, samples, "PPL", scores["model_1"],n=args.extract_n)
+    ppl_res,cleaned_ppl_res = print_best(memorized_content_index,metric, samples, "PPL", scores["model_1"],n=args.extract_n)
     logger.info('\n')
     logger.info('\n')
 
@@ -205,21 +189,21 @@ def main():
     else:
         metric = np.log(scores["model_2"]) / np.log(scores["model_1"])
     logger.info(f"======== top sample by ratio of {args.model_1} and {args.model_2} perplexities: ========")
-    comparing_ppl_res = print_best(memorized_content_index,metric, samples, f"PPL-{args.model_1}", scores["model_1"], f"PPL-{args.model_2}", scores["model_2"],n=args.extract_n)
+    comparing_ppl_res,cleaned_comparing_ppl_res = print_best(memorized_content_index,metric, samples, f"PPL-{args.model_1}", scores["model_1"], f"PPL-{args.model_2}", scores["model_2"],n=args.extract_n)
     logger.info('\n')
     logger.info('\n')
 
     # Sort by ratio of log perplexities of lower-case and normal-case perplexities 
     metric = np.log(scores["Lower"]) / np.log(scores["model_1"])
     logger.info(f"======== top sample by ratio of lower-case and normal-case perplexities: ========")
-    lower_res = print_best(memorized_content_index,metric, samples, f"PPL-{args.model_1}", scores["model_1"], f"PPL-{args.model_1}-Lower", scores["Lower"],n=args.extract_n)
+    lower_res,cleaned_lower_res = print_best(memorized_content_index,metric, samples, f"PPL-{args.model_1}", scores["model_1"], f"PPL-{args.model_1}-Lower", scores["Lower"],n=args.extract_n)
     logger.info('\n')
     logger.info('\n')
 
     # Sort by ratio of Zlib entropy and XL perplexity
     metric = scores["zlib"] / np.log(scores["model_1"])
     logger.info(f"======== top sample by ratio of Zlib entropy and {args.model_1} perplexity: ========")
-    zlib_res = print_best(memorized_content_index,metric, samples, f"PPL-{args.model_1}", scores["model_1"], "Zlib", scores["zlib"],n=args.extract_n)
+    zlib_res,cleaned_zlib = print_best(memorized_content_index,metric, samples, f"PPL-{args.model_1}", scores["model_1"], "Zlib", scores["zlib"],n=args.extract_n)
 
     if args.save_output:
         save_res_path = 'results/{}-temp{}-len{}-k{}'.format(args.model_1, args.temperature, args.seq_len, args.top_k)
@@ -229,6 +213,12 @@ def main():
         save_the_best(save_res_path, lower_res, 'lower')
         save_the_best(save_res_path, zlib_res, 'zlib')
         logger.info(f"======== save the results to {save_res_path} ========")
+    if args.save_cleaned:
+        save_the_best(save_res_path, cleaned_ppl_res, 'ppl_cleaned')
+        save_the_best(save_res_path, cleaned_comparing_ppl_res, 'comparing_ppl_cleaned')
+        save_the_best(save_res_path, cleaned_lower_res, 'lower_cleaned')
+        save_the_best(save_res_path, cleaned_zlib, 'zlib_cleaned')
+        logger.info(f"======== save the cleaned results to {save_res_path} ========")
 
 if __name__ == "__main__":
     args = parse_arguments(sys.argv[1:])
