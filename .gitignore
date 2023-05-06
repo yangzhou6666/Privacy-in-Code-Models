@@ -21,3 +21,9 @@ Play.md
 prompts/log
 prompts/results
 prompts/prompt_data
+prompts/prompt_data-train.csv
+prompts/random_sample_prompt_dev/result
+
+evaluation/results
+evaluation/sensitive
+prompts/random_sample_prompt_dev/results/
