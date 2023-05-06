@@ -3,6 +3,17 @@
 This repository 💻 is for our ASE submission 📚 that explores 🔍 the memorization 🧠 in code models.
 
 
+**The outline of our repositry:**
+- [Environment Configuration](#environment-configuration)
+- [Non-Conditional Sampling](#non-conditional-sampling)
+- [Memorization Analysis](#memorization-analysis)
+- [Two-step Sampling](#two-step-sampling)
+- [Conditonal Sampling](./prompts/README.md)
+- [Memorized Information Inference ](./evaluation/README.md)
+- [Personal Information Identification](./PII/README.md)
+
+
+
 
 # Environment Configuration
 
@@ -20,8 +31,8 @@ conda env create -f environment.yml
 ```Shell
 To-Do
 ```
-
-# Sample Outputs from code models
+# Non-conditional Sampling
+## Sample Outputs from code models
 
 First, `cd extract`. Then, execute the following command:
 
@@ -187,7 +198,7 @@ where the
 
 
 
-
+# Two step sampling
 ## Sample with prompts
 We have two kinds of prompts:
 
@@ -253,4 +264,4 @@ This command will result in a directory `extract/results/codeparrot/codeparrot-s
 
 For the humans defined prompts, the `eb17e3d78803b21a4f6144d2f8b639edf3ebf5e3` in the dictionary path will be replaced by the sha hash caculted from the  `args.prompt`
 
-[🛎️]: The outputs  remove the prompts txt so if you want to do further analyze, you need to add them back to the top if you need. 
+🛎️: The outputs  remove the prompts text so if you want to do further analyze, you need to add them back to the top if you need. 
