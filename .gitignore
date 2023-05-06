@@ -2,16 +2,7 @@ CodeCompletion-token/dataset/py150/py150_files/*
 .DS_Store
 *.log
 *.pyc
-CodeCompletion-token/dataset/py150/token_completion/*
-CodeCompletion-token/dataset/javaCorpus/JavaCorpusRaw/*
-CodeCompletion-token/dataset/javaCorpus/JavaCorpusRaw
-CodeCompletion-token/save/
-CodeCompletion-token/dataset/javaCorpus/token_completion/
-CodeCompletion-token/dataset/py150/token_completion-original/
-CodeCompletion-token/dataset/javaCorpus/separation/
-CodeCompletion-line/save/
-CodeCompletion-line/dataset/py150/line_completion_emails/
-CodeCompletion-benchmark/results/
+
 extract/results/
 clone/.data_cache/
 clone/save/
