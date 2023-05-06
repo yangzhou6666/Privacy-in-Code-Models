@@ -8,6 +8,7 @@ import re
 import time
 import os
 def main(sample_size=1000,max_length=100,model_type=None,gpu_id="0"):
+    # if model_type is None, throw out the error
     if model_type is None:
         raise
      # save the log to file, get the time as the log name
