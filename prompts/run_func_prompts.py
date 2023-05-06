@@ -34,7 +34,7 @@ def remove_all_the_comments(content):
 def process_save_prompts():
     save_prompts_dict = {}
     # 读取数据
-    df = pd.read_csv("prompt_data-train.csv.csv") #selected_prompt.csv / prompt_data-train.csv
+    df = pd.read_csv("prompt_data-train.csv") #selected_prompt.csv / prompt_data-train.csv
     contents = df['content'].tolist()
     # 记录失败：1.paser失败的 2.没有函数的，即没有def的
     failed_contents = []
