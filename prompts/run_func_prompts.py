@@ -136,11 +136,11 @@ def main(sample_size=1000,max_length=100,model_type=None,gpu_id="0",sample_numbe
 
 if __name__ == "__main__":
     os.makedirs('log',exist_ok=True)
-    # process_save_prompts()
+    process_save_prompts()
 
     # 如果规定了prompt，max_length最好为-1
     # main(sample_size=100,model_type="codeparrot/codeparrot-small",max_length=-1,gpu_id="1")
     # main(sample_size=-1,model_type="codeparrot/codeparrot",max_length=-1,gpu_id="1") # for selected_prompt.csv
-    main(sample_size=2000,model_type="codeparrot/codeparrot",max_length=-1,gpu_id="1",sample_mode = "per_prompt",sample_number=100) # for selected_prompt.csv
+    # main(sample_size=2000,model_type="codeparrot/codeparrot",max_length=-1,gpu_id="1",sample_mode = "per_prompt",sample_number=100) # for selected_prompt.csv
 
         
