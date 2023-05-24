@@ -26,3 +26,10 @@ Make sure you have the `gibberish_data` folder in the same directory as the scri
 ## Notebooks
 * `example.ipynb` is an example notebook to show how to use the pipeline.
 * there are several notebooks in `notebooks` folder with some of our experiments.
+
+
+## How we utilize this utility
+1. PII instance detect & record
+   1. Under the *PII* folder, run `python3 toy.py --result_path [path_to_dataset_file] --output_path [path_to_output_file]`. We used `base-512-nonprompt-all-merged.txt` and `base-512-promptConditional-all-merged-ffff.txt` as the dataset. Then the PII information will be detected and stored as output file. The dataset files and output files that we used and generated are inside the *PII/output* folder.
+2. PII matching
+   1. @zzp

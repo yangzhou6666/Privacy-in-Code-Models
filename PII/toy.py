@@ -1,8 +1,18 @@
+import argparse
 from pii_detection import scan_pii_batch
 from tqdm import tqdm
 
 if __name__ == '__main__':
-    result_path = "/Users/zhouyang/Downloads/all"
+    parser = argparse.ArgumentParser(description='Process some files.')
+    parser.add_argument('--result_path', type=str, required=True,
+                        help='path to result file')
+    parser.add_argument('--output_path', type=str, required=True,
+                        help='path to output file')
+
+    args = parser.parse_args()
+    result_path = args.result_path
+    output_path = args.output_path
+
     with open(result_path, 'r') as f:
         contents = f.readlines()
         code = ""
@@ -17,9 +27,11 @@ if __name__ == '__main__':
     results = scan_pii_batch(example, key_detector="regex")
 
     counter = 0
-    for s in results['secrets']:
-        if s != '[]':
-            print(s)
-            counter += 1
+    with open(output_path, 'w') as f:
+        for s in results['secrets']:
+            if s != '[]':
+                f.write(s + '\n')
+                counter += 1
 
-    print(counter)
+    print("Results stored in:", output_path)
+    print("Total secrets found:", counter)
