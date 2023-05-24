@@ -1,11 +1,11 @@
 # Overview
 
-This repository 💻 is for our ASE submission 📚 that explores 🔍 the memorization 🧠 in code models.
+This repository 💻 is for our ASE submission 📚 **Unraveling Memorization in Code Models**, which explores 🔍 the memorization 🧠 in code models.
 
 
 **The outline of our repositry:**
 - [Environment Configuration](#environment-configuration)
-- [Non-Conditional Sampling](#non-conditional-sampling)
+- [Non-Conditional Generation](#non-conditional-sampling)
 - [Memorization Analysis](#memorization-analysis)
 - [Two-step Sampling](#two-step-sampling)
 - [Conditonal Sampling](./prompts/README.md)
@@ -26,13 +26,8 @@ conda env create -f environment.yml
 <span style="background-color: yellow">You may need to update the pytorch installation command accordingly based on your CUDA version.</span>
 
 
-## Docker
-
-```Shell
-To-Do
-```
-# Non-conditional Sampling
-## Sample Outputs from code models
+# Non-conditional Generation
+## Generate Outputs from code models
 
 First, `cd extract`. Then, execute the following command:
 
@@ -198,8 +193,8 @@ where the
 
 
 
-# Two step sampling
-## Sample with prompts
+# Two step generation
+## Generation with prompts
 We have two kinds of prompts:
 
 1. specify by humans
@@ -220,7 +215,7 @@ python extract/extract.py \
     --prompt xxx \ # The prompt to use for generation
     --internet-sampling
 ```
-### gets from samples
+### Get prompts
 if we want to gets the prompt from the samples, we can run:
 ```shell
 python log/analyze.py \
