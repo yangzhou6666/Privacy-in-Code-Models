@@ -21,3 +21,6 @@ Play.md
 prompts/log
 prompts/results
 prompts/prompt_data
+prompts/
+evaluation/results/
+evaluation/sensitive/
