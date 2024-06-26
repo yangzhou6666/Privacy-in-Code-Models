@@ -9,7 +9,7 @@ do
 
 
 LANG=java    
-CLASSIFIER_SAVE_DICT=../classifier_save/PTM3/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/${SEED}/
+CLASSIFIER_SAVE_DICT=../classifier_save/PTM3/javaCorpus/${VICTIM_MODEL##*/}/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/${SEED}/
 PREDICTION_DATA_FOLDER_PATH=../../CodeCompletion-line/dataset/javaCorpus/${Percentage}/${SAMPLE_RATIO}/
 LITFILE=../dataset/javaCorpus/literals.json
 
