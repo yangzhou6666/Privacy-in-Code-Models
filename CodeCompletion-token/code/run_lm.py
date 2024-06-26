@@ -20,29 +20,24 @@ Code completion (both token level and line level) pipeline in CodeXGLUE
 from __future__ import absolute_import, division, print_function
 
 import argparse
-import glob
+import json
 import logging
 import os
-import pickle
 import random
-import re
-import shutil
-import json
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Dataset, SequentialSampler, RandomSampler,TensorDataset
+from torch.utils.data import DataLoader, SequentialSampler, RandomSampler
 from torch.utils.data.distributed import DistributedSampler
-from dataset import TextDataset, finetuneDataset, EvalDataset, lineDataset
-from beam import Beam
-
-from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
+from transformers import (AdamW, get_linear_schedule_with_warmup,
                           BertConfig, BertForMaskedLM, BertTokenizer,
                           GPT2Config, GPT2LMHeadModel, GPT2Tokenizer,
                           OpenAIGPTConfig, OpenAIGPTLMHeadModel, OpenAIGPTTokenizer,
                           RobertaConfig, RobertaForMaskedLM, RobertaTokenizer,
                           DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer,
-                          AutoModelForCausalLM, AutoTokenizer,AutoConfig,T5ForConditionalGeneration,T5Tokenizer)
+                          AutoModelForCausalLM, AutoTokenizer, AutoConfig, T5ForConditionalGeneration, T5Tokenizer)
+
+from dataset import TextDataset, finetuneDataset, EvalDataset
 from model import RNNModel
 
 # logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
@@ -60,7 +55,11 @@ MODEL_CLASSES = {
     "transformer": (GPT2Config, GPT2LMHeadModel, GPT2Tokenizer),
     'xgml':(AutoConfig, AutoModelForCausalLM, AutoTokenizer),
     't5':(AutoConfig, T5ForConditionalGeneration, RobertaTokenizer), #codet5的tokenizer是roberta的
-    "orignal_t5":(AutoConfig, T5ForConditionalGeneration, T5Tokenizer)
+    "orignal_t5":(AutoConfig, T5ForConditionalGeneration, T5Tokenizer),
+    'codegen':(AutoConfig, AutoModelForCausalLM, AutoTokenizer),
+    'starcoder': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
+    'codellama': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
+    'incoder': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
 }
 
 
