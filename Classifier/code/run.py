@@ -337,7 +337,7 @@ def main():
                     model_to_save = model.module if hasattr(model, 'module') else model
                     if not os.path.exists(args.classifier_save_dir):
                         os.makedirs(args.classifier_save_dir)
-                    model_to_save.save_pretrained(args.classifier_save_dir)
+                    model_to_save.save_pretrained(args.classifier_save_dir, safe_serialization=False)
                     logger.info("Saving model checkpoint to %s", args.classifier_save_dir)
     logger.info('[best_acc]: {}'.format(best_acc))
 
