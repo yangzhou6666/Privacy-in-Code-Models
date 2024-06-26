@@ -1,19 +1,22 @@
-from dataset import ClassificationDataset,prepare_data,keep_test_data,ClassificationDataset_collate_fn,keep_sample_data,prepare_sample_java_data,prepare_sample_data,keep_normal_test_data
-from transformers import BertConfig
-from sklearn.metrics import roc_auc_score
-import os
-from model import TBertT,TBertTNoTitle,TBertTNoText,TBertTNoCode
-from transformers import AutoTokenizer,AutoModelForSequenceClassification
-from torch.utils.data import DataLoader
-import torch
-import random
-import numpy as np
-from transformers import AdamW,get_linear_schedule_with_warmup
-import logging
-from tqdm import tqdm
 import argparse
 import json
+import logging
+import os
+import random
+
+import numpy as np
+import torch
+from sklearn.metrics import roc_auc_score
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import BertConfig
+
 from args import victim_maps
+from dataset import ClassificationDataset, prepare_data, keep_test_data, ClassificationDataset_collate_fn, \
+    keep_sample_data, prepare_sample_java_data, prepare_sample_data, keep_normal_test_data
+from model import TBertT, TBertTNoTitle, TBertTNoText, TBertTNoCode
+
 VICTIM_MODE2MODEL_MAP = victim_maps()
 logger = logging.getLogger(__name__)
 
@@ -31,7 +34,7 @@ def get_args():
         help="Set this flag if you are using an uncased model."
     )
     parser.add_argument(
-        '--use_tree_component' ,
+        '--use_tree_component',
         action='store_true',
         help='whether to use tree component'
     )
@@ -44,20 +47,20 @@ def get_args():
     parser.add_argument(
         "--lang",
         type=str,
-        choices=['python','java']
+        choices=['python', 'java']
     ) 
     parser.add_argument(
         "--surrogate_model",
         type=str,
         choices=['gpt2','microsoft/CodeGPT-small-py','microsoft/CodeGPT-small-java','rnn','transformer',
-                'micrsoft/CodeGPT-small-py-adaptedGPT2','microsoft/CodeGPT-small-java-adaptedGPT2']
+                'micrsoft/CodeGPT-small-py-adaptedGPT2','microsoft/CodeGPT-small-java-adaptedGPT2', 'Salesforce/codegen-350M-multi']
     )
     parser.add_argument(
         "--victim_model",
         type=str,
         default='micrsoft/CodeGPT-small-py-adaptedGPT2',
         choices=['gpt2','microsoft/CodeGPT-small-py','microsoft/CodeGPT-small-java','rnn','transformer',
-                'micrsoft/CodeGPT-small-py-adaptedGPT2','microsoft/CodeGPT-small-java-adaptedGPT2']
+                'micrsoft/CodeGPT-small-py-adaptedGPT2','microsoft/CodeGPT-small-java-adaptedGPT2', "Salesforce/codegen-350M-multi"]
     )
     parser.add_argument(
         "--sample_ratio",
@@ -289,6 +292,7 @@ def main():
             model = TBertTNoCode(BertConfig(),'microsoft/codebert-base',num_class=2)
         model.resize_token_embeddings(len(tokenizer))
         model.load_state_dict(torch.load(os.path.join(args.classifier_model_path,'pytorch_model.bin')),strict=True)
+        # model.load_state_dict(torch.load(os.path.join(args.classifier_model_path, 'model.safetensors')), strict=True)
         logger.info("[load model]: "+ f"{args.classifier_model_path}")
     else:
         model = AutoModelForSequenceClassification.from_pretrained(args.classifier_model_path,num_labels=2) #label=0/1
@@ -347,10 +351,10 @@ def main():
     
     
     if not args.consider_sample_java and not args.consider_sample_all:
-        res,_ = evaluate(args, model, val_dataloader,device=device)
+        res, _ = evaluate(args, model, val_dataloader, device=device)
         logger.info('[val_best_acc]: {}\n\n'.format(res))
-    res,all_logits  =evaluate(args, model, test_dataloader,device=device)
-    logger.info('[best_acc]: {}\n\n'.format(json.dumps(res,indent=2)))
+    res, all_logits  =evaluate(args, model, test_dataloader, device=device)
+    logger.info('[best_acc]: {}\n\n'.format(json.dumps(res, indent=2)))
     if args.save_results:
         logger.info('results saved \n')
         data_dir = os.path.join(args.data_dir,args.lang,args.surrogate_model,args.sample_ratio)
