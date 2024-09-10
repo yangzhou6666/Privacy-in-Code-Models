@@ -60,7 +60,11 @@ def get_args():
         type=str,
         default='micrsoft/CodeGPT-small-py-adaptedGPT2',
         choices=['gpt2','microsoft/CodeGPT-small-py','microsoft/CodeGPT-small-java','rnn','transformer',
-                'micrsoft/CodeGPT-small-py-adaptedGPT2','microsoft/CodeGPT-small-java-adaptedGPT2', "Salesforce/codegen-350M-multi"]
+                'micrsoft/CodeGPT-small-py-adaptedGPT2','microsoft/CodeGPT-small-java-adaptedGPT2', "Salesforce/codegen-350M-multi",
+                "bigcode/starcoderbase-1b",
+                "NinedayWang/PolyCoder-0.4B",
+                "codeparrot/codeparrot-small",
+                "bigcode/santacoder"]
     )
     parser.add_argument(
         "--sample_ratio",
