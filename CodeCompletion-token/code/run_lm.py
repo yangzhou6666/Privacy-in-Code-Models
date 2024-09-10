@@ -35,7 +35,7 @@ from transformers import (AdamW, get_linear_schedule_with_warmup,
                           OpenAIGPTConfig, OpenAIGPTLMHeadModel, OpenAIGPTTokenizer,
                           RobertaConfig, RobertaForMaskedLM, RobertaTokenizer,
                           DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer,
-                          AutoModelForCausalLM, AutoTokenizer, AutoConfig, T5ForConditionalGeneration, T5Tokenizer)
+                          AutoModelForCausalLM, AutoTokenizer, AutoConfig, T5ForConditionalGeneration, T5Tokenizer, AutoModelWithLMHead)
 
 from dataset import TextDataset, finetuneDataset, EvalDataset
 from model import RNNModel
@@ -54,12 +54,14 @@ MODEL_CLASSES = {
     'distilbert': (DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer),
     "transformer": (GPT2Config, GPT2LMHeadModel, GPT2Tokenizer),
     'xgml':(AutoConfig, AutoModelForCausalLM, AutoTokenizer),
-    't5':(AutoConfig, T5ForConditionalGeneration, RobertaTokenizer), #codet5的tokenizer是roberta的
-    "orignal_t5":(AutoConfig, T5ForConditionalGeneration, T5Tokenizer),
+    't5':(AutoConfig, T5ForConditionalGeneration, RobertaTokenizer), # codet5的tokenizer是roberta的
+    "orignal_t5" : (AutoConfig, T5ForConditionalGeneration, T5Tokenizer),
     'codegen':(AutoConfig, AutoModelForCausalLM, AutoTokenizer),
     'starcoder': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
     'codellama': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
     'incoder': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
+    'codeparrot': (AutoConfig, AutoModelWithLMHead, AutoTokenizer),
+    'santacoder': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
 }
 
 
@@ -106,7 +108,8 @@ def train(args, train_dataset, model, tokenizer, fh, pool):
     
     args.batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
     train_sampler = RandomSampler(train_dataset)
-    train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.batch_size, drop_last=True)
+    train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.batch_size,
+                                  drop_last=True)
     total_examples = len(train_dataset) * (
                     torch.distributed.get_world_size() if args.local_rank != -1 else 1)
     batch_size = args.batch_size * args.gradient_accumulation_steps * (
