@@ -14,3 +14,4 @@ CodeCompletion-line/dataset/py150/line_completion_emails/
 CodeCompletion-line/dataset/javaCorpus/
 Classifier/classifier_save/PTM3/javaCorpus/
 .idea/
+Classifier/dataset/
