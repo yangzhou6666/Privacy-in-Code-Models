@@ -45,15 +45,21 @@ Code corpus are saved in txt format files. one line is a tokenized code snippets
 
 
 ## Pipeline
-To get the surrogate models, we can run
+
+Let's first train the victim model. 
+```
+$ bash pipline_java_victim.sh # get the victim model
+```
+The victim model is trained on the whole dataset (100%).
+You can change the `PRETRAINDIR=bigcode/santacoder` to other models, e.g., `bigcode/starcoderbase-1b` to use different models as the base model.
+
+
+Then, we train the surrogate model on part of the training data (10% and 20%). We have three types of surrogate models: (1) GPT-2 based, including GPT-2 and microsoft/CodeGPT-small-java, (2) non-pretrained transformer, (3) LSTM. The following three files correspond to these types. 
 ```
 $ cd /workspace/CodeCompletion-token/code
 $ bash pipline_java.sh # can change `PRETRAINDIR` in [microsoft/CodeGPT-small-java,gpt2] to train different surrogate model
 $ bash pipline_java_transformer.sh
 $ bash pipline_java_lstm.sh
 ```
-To get the victim model, we can run:
-```
-$ bash pipline_java_victim.sh # get the victim model
-```
+
 
