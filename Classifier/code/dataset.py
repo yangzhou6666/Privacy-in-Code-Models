@@ -22,10 +22,16 @@ def prepare_data(args):
         model_name = args.victim_model.split('/')[-1]
     else:
         raise
-    predictions_train = get_data(args.prediction_data_folder_path,f'train_{model_name}_{args.mode}_infer.txt')
-    predictions_test = get_data(args.prediction_data_folder_path,f'test_{model_name}_{args.mode}_infer.txt')
+    
+    predictions_train = get_data(args.prediction_data_folder_path,f'train_{model_name}_{args.mode}_epoch-{args.epoch}_infer.txt')
+    
+    predictions_test = get_data(args.prediction_data_folder_path,f'test_{model_name}_{args.mode}_epoch-{args.epoch}_infer.txt')
+    # 模型的inference结果.
+    
+    
     train = get_data(args.prediction_data_folder_path,f'train_{base_mode}.json')
     test = get_data(args.prediction_data_folder_path,f'test_{base_mode}.json')
+    # input + ground truth信息. 和前面的inference是对应的.
 
     assert len(predictions_train) == len(train)
     assert len(predictions_test) == len(test)
@@ -166,11 +172,12 @@ def keep_test_data(args,classifier_train,classifier_test):
             f.write('\n')
             f.write(json.dumps(classifier_train[i]))
             f.write('\n')
+
 def keep_normal_test_data(args,classifier_train,classifier_test):
     saved_dir = os.path.join(args.data_dir,args.lang,args.surrogate_model,args.sample_ratio)
     if not os.path.exists(saved_dir):
         os.makedirs(saved_dir)
-    with open(os.path.join(saved_dir,f'test.json'),'w') as f:
+    with open(os.path.join(saved_dir,f'{args.model_name}_{args.epoch}_test.json'),'w') as f:
         for i in range(len(classifier_train)):
             classifier_test[i]['label'] = 0
             classifier_train[i]['label'] = 1
@@ -178,6 +185,8 @@ def keep_normal_test_data(args,classifier_train,classifier_test):
             f.write('\n')
             f.write(json.dumps(classifier_train[i]))
             f.write('\n')
+            
+            
 def keep_sample_java_data(args,classifier_test):
     saved_dir = os.path.join(args.prediction_data_folder_path,'sample_java')
     if not os.path.exists(saved_dir):
@@ -221,38 +230,45 @@ class ClassificationDataset(Dataset):
         if args.consider_sample_java:
             saved_dir = os.path.join(args.prediction_data_folder_path,'sample')
         # 由于温度和epoch都会变，所以需要重新生成
-        if os.path.exists(os.path.join(saved_dir,file_type+suffix)) and not args.consider_epoch and not args.consider_topk_tempreature:
-            with open(os.path.join(saved_dir,file_type+suffix),'rb') as f:
-                self.data = pickle.load(f)
+        # if os.path.exists(os.path.join(saved_dir,file_type+suffix)) and not args.consider_epoch and not args.consider_topk_tempreature:
+        #     print(f"load from pickle {file_type}")
+        #     raise
+        #     with open(os.path.join(saved_dir,file_type+suffix),'rb') as f:
+        #         self.data = pickle.load(f)
+        # else:
+        # load from json
+        if args.mode == 'victim' and file_type == 'test':
+            path_to_file = os.path.join(saved_dir, f'{args.model_name}_{args.epoch}_' + file_type+'.json')
         else:
-            with open(os.path.join(saved_dir,file_type+'.json'),'r') as f:
-                data = f.readlines()
-            self.data = []
-            for d in data:
-                d = json.loads(d)
+            path_to_file = os.path.join(saved_dir, file_type+'.json')
+        with open(path_to_file) as f:
+            data = f.readlines()
+        self.data = []
+        for d in data:
+            d = json.loads(d)
 
-                inputs = d['input'][1:] # 去掉开头的<s>
+            inputs = d['input'][1:] # 去掉开头的<s>
 
-                inputs = tokenizer.encode(inputs,add_special_tokens=False)
-                inputs = inputs[-args.input_length:]
+            inputs = tokenizer.encode(inputs,add_special_tokens=False)
+            inputs = inputs[-args.input_length:]
 
-                gt = d['gt']
-                gt = tokenizer.encode(gt,add_special_tokens=False)
-                gt = gt[:args.prediction_length-2]
+            gt = d['gt']
+            gt = tokenizer.encode(gt,add_special_tokens=False)
+            gt = gt[:args.prediction_length-2]
 
-                prediction = d['prediction']
-                prediction = tokenizer.encode(prediction,add_special_tokens=False)
-                prediction = prediction[:args.prediction_length-2]
+            prediction = d['prediction']
+            prediction = tokenizer.encode(prediction,add_special_tokens=False)
+            prediction = prediction[:args.prediction_length-2]
 
-                self.data.append({
-                    'input_ids':[tokenizer.cls_token_id] + inputs + [tokenizer.sep_token_id] +[tokenizer.pad_token_id]*(args.total_length-len(inputs)-2),
-                    'groundtruth_ids':[tokenizer.cls_token_id] + gt + [tokenizer.sep_token_id]+[tokenizer.pad_token_id]*(args.prediction_length-len(gt)-2),
-                    'prediction_ids':[tokenizer.cls_token_id] + prediction + [tokenizer.sep_token_id]+[tokenizer.pad_token_id]*(args.prediction_length-len(prediction)-2),
-                    'label':d['label']
-                }
-                )
-            with open(os.path.join(saved_dir,file_type+suffix),'wb') as f:
-                pickle.dump(self.data,f)
+            self.data.append({
+                'input_ids':[tokenizer.cls_token_id] + inputs + [tokenizer.sep_token_id] +[tokenizer.pad_token_id]*(args.total_length-len(inputs)-2),
+                'groundtruth_ids':[tokenizer.cls_token_id] + gt + [tokenizer.sep_token_id]+[tokenizer.pad_token_id]*(args.prediction_length-len(gt)-2),
+                'prediction_ids':[tokenizer.cls_token_id] + prediction + [tokenizer.sep_token_id]+[tokenizer.pad_token_id]*(args.prediction_length-len(prediction)-2),
+                'label':d['label']
+            }
+            )
+        # with open(os.path.join(saved_dir,file_type+suffix),'wb') as f:
+            #     pickle.dump(self.data,f)
     def __len__(self):
         return len(self.data)
 

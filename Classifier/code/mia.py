@@ -28,6 +28,13 @@ def get_args():
         type=int,
         help="random seed for initialization",
     )
+    
+    parser.add_argument(
+        "--epoch",
+        default=4,
+        type=int,
+        help="Which epoch to evaluate",
+    )
     parser.add_argument(
         "--do_lower_case", 
         action='store_true',
@@ -38,6 +45,7 @@ def get_args():
         action='store_true',
         help='whether to use tree component'
     )
+    
     parser.add_argument(
         "--data_dir",
         type=str,
@@ -64,7 +72,7 @@ def get_args():
                 "bigcode/starcoderbase-1b",
                 "NinedayWang/PolyCoder-0.4B",
                 "codeparrot/codeparrot-small",
-                "bigcode/santacoder"]
+                "bigcode/santacoder", "NinedayWang/PolyCoder-160M", "EleutherAI/gpt-neo-125m"]
     )
     parser.add_argument(
         "--sample_ratio",
@@ -262,7 +270,8 @@ def main():
     if args.consider_epoch:
         args.mode = VICTIM_MODE2MODEL_MAP[args.mode]
     
-    
+    model_name = args.victim_model.split('/')[-1]
+    args.model_name = model_name
     # utils
     device = torch.device("cuda" if torch.cuda.is_available()  else "cpu")
     if args.seed:
@@ -277,7 +286,7 @@ def main():
         args.classifier_model_path = os.path.join(args.classifier_model_path,args.ablation_mode)
     if not os.path.exists(args.classifier_save_dir):
         os.makedirs(args.classifier_save_dir)
-    log_file = os.path.join(args.classifier_save_dir,'log_eval.txt')
+    log_file = os.path.join(args.classifier_save_dir,f'log_eval_{model_name}_{args.epoch}.txt')
     fh = logging.FileHandler(log_file)
     fh.setFormatter(formatter)
     logger.addHandler(fh)
@@ -303,7 +312,7 @@ def main():
         model.resize_token_embeddings(len(tokenizer))
     model.to(device)
     logger.info("---------------------------------")
-    model_name = args.victim_model.split('/')[-1]
+
     logger.info(f"[surrogate model loaded]: {args.classifier_model_path}")
     logger.info("[victim model]: "+ f"{model_name}_{args.mode}")
     logger.info("[classifier model]: BERT-based")
@@ -336,10 +345,16 @@ def main():
         keep_test_data(args,classifier_train,classifier_test)
         test_dataset = ClassificationDataset(args,file_type=f'test_{model_name}_{args.mode}',tokenizer=tokenizer)
     else:
-        if not os.path.exists(os.path.join(data_path,'test.json')):
-            classifier_train, classifier_test = prepare_data(args)
-            logger.info(f"[data prepared]: length :{len(classifier_train)} {len(classifier_test)}")
-            keep_normal_test_data(args,classifier_train,classifier_test)
+        print(f"The path is {os.path.join(data_path,f'{model_name}_test.json')}")
+        
+        # always process from scratch rather than load from cache
+        classifier_train, classifier_test = prepare_data(args)
+        # 这里读取的是victim models的inference结果
+        logger.info(f"[data prepared]: length :{len(classifier_train)} {len(classifier_test)}")
+        keep_normal_test_data(args,classifier_train,classifier_test)
+        # 这里写入了test.json
+        # CODE BEFORE MAJOR REIVION: 然是写入时并没有区分victim models, 因此得修改.
+        # UPDATE AFTER REVISION: 'test.json' -> f'{model_name}_test.json' 指定了victim model，这样每次load的时候就是不一样的了.
         test_dataset = ClassificationDataset(args,file_type='test',tokenizer=tokenizer)
 
     # 其中train.json和dev.json是用于训练和测试的classifier的数据，test.json是用于验证真实世界情况的数据

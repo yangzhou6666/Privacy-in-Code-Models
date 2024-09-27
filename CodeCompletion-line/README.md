@@ -14,6 +14,10 @@ Infer the results of surrogate models:
 ```
 $ cd /workspace/CodeCompletion-line/code
 $ bash infer.sh # can change `MODEL` in [microsoft/CodeGPT-small-java,gpt2] 
+```
+The result is saved in `CodeCompletion-line/dataset/javaCorpus/0.01/10/test_CodeGPT-small-java-adaptedGPT2_surrogate_infer.txt`
+
+```
 $ bash infer_transformer.sh 
 $ bash infer_lstm.sh
 ```

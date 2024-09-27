@@ -43,7 +43,7 @@ from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
                           OpenAIGPTConfig, OpenAIGPTLMHeadModel, OpenAIGPTTokenizer,
                           RobertaConfig, RobertaForMaskedLM, RobertaTokenizer,
                           DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer,
-                          AutoModelForCausalLM, AutoTokenizer,AutoConfig,T5ForConditionalGeneration,T5Tokenizer)
+                          AutoModelForCausalLM, AutoTokenizer,AutoConfig,T5ForConditionalGeneration,T5Tokenizer, AutoModelWithLMHead)
 from model import RNNModel
 
 
@@ -57,9 +57,18 @@ MODEL_CLASSES = {
     'roberta': (RobertaConfig, RobertaForMaskedLM, RobertaTokenizer),
     'distilbert': (DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer),
     "transformer": (GPT2Config, GPT2LMHeadModel, GPT2Tokenizer),
-    't5':(AutoConfig, T5ForConditionalGeneration, RobertaTokenizer), #codet5的tokenizer是roberta的
-    "orignal_t5":(AutoConfig, T5ForConditionalGeneration, T5Tokenizer)
+    'xgml':(AutoConfig, AutoModelForCausalLM, AutoTokenizer),
+    't5':(AutoConfig, T5ForConditionalGeneration, RobertaTokenizer), # codet5的tokenizer是roberta的
+    "orignal_t5" : (AutoConfig, T5ForConditionalGeneration, T5Tokenizer),
+    'codegen':(AutoConfig, AutoModelForCausalLM, AutoTokenizer),
+    'starcoder': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
+    'codellama': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
+    'incoder': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
+    'codeparrot': (AutoConfig, AutoModelWithLMHead, AutoTokenizer),
+    'santacoder': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
+    'polycoder': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
 }
+
 
 
 
@@ -439,7 +448,12 @@ def eval_line_completion(args, model, tokenizer, file_type='test'):
         if step % args.logging_steps == 0:
             logger.info(f"{step} are done!")
     if args.generate_method == 'beam':
-        saved_file = os.path.join(args.output_dir, f"{file_type}_{args.pretrain_dir.split('/')[-3]}_{args.mode}_infer.txt")
+        # saved_file = os.path.join(args.output_dir, f"{file_type}_{args.pretrain_dir.split('/')[-3]}_{args.mode}_infer.txt")
+        
+        # epoch
+        epoch = args.pretrain_dir.split('checkpoint-')[-1]
+        saved_file = os.path.join(args.output_dir, f"{file_type}_{args.pretrain_dir.split('/')[-3]}_{args.mode}_{epoch}_infer.txt")
+        
     elif args.generate_method == 'top-k':
         saved_file = os.path.join(args.output_dir, f"{file_type}_{args.pretrain_dir.split('/')[-3]}_{args.mode}_K_{str(args.topk)}_T_{str(args.temperature)}_infer.txt")
     else:
@@ -563,7 +577,8 @@ def main():
     args = parser.parse_args()
 
     # args.output_dir = os.path.join(args.output_dir, args.dataset)
-    assert os.path.exists(args.output_dir)
+    print(args.output_dir)
+    assert os.path.exists(args.output_dir) 
 
     if args.model_type in ["bert", "roberta", "distilbert"] and not args.mlm:
         raise ValueError("BERT and RoBERTa do not have LM heads but masked LM heads. They must be run using the --mlm "
@@ -644,6 +659,8 @@ def main():
         if args.model_type == "orignal_t5":
             tokenizer = tokenizer_class.from_pretrained(pretrained, do_lower_case=args.do_lower_case, sep_token='<EOL>', bos_token='<s>', eos_token='</s>', pad_token='<pad>', unk_token='<|UNKNOWN|>')
             tokenizer.add_tokens(special_tokens)
+        elif args.model_type in ['codegen', 'starcoder', 'codellama', 'incoder', 'codeparrot', 'santacoder',  'xgml']:
+            tokenizer = AutoTokenizer.from_pretrained(pretrained)
         else:
             tokenizer = tokenizer_class.from_pretrained(pretrained, do_lower_case=args.do_lower_case, sep_token='<EOL>', bos_token='<s>', eos_token='</s>', pad_token='<pad>', unk_token='<|UNKNOWN|>', additional_special_tokens=special_tokens)
         if args.model_type == "rnn":

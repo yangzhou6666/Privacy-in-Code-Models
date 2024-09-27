@@ -62,6 +62,7 @@ MODEL_CLASSES = {
     'incoder': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
     'codeparrot': (AutoConfig, AutoModelWithLMHead, AutoTokenizer),
     'santacoder': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
+    'polycoder': (AutoConfig, AutoModelForCausalLM, AutoTokenizer),
 }
 
 
@@ -671,8 +672,12 @@ def main():
         if args.model_type == "orignal_t5":
             tokenizer = tokenizer_class.from_pretrained(pretrained, do_lower_case=args.do_lower_case, sep_token='<EOL>', bos_token='<s>', eos_token='</s>', pad_token='<pad>', unk_token='<|UNKNOWN|>')
             tokenizer.add_tokens(special_tokens)
+        elif args.model_type in ['codegen', 'starcoder', 'codellama', 'incoder', 'codeparrot', 'santacoder',  'xgml']:
+            tokenizer = AutoTokenizer.from_pretrained(pretrained)
         else:
             tokenizer = tokenizer_class.from_pretrained(pretrained, do_lower_case=args.do_lower_case, sep_token='<EOL>', bos_token='<s>', eos_token='</s>', pad_token='<pad>', unk_token='<|UNKNOWN|>', additional_special_tokens=special_tokens)
+            
+            
         if args.model_type == "rnn":
             model = model_class(len(tokenizer), 768, 768, 1)
             model_last = os.path.join(pretrained, 'model.pt')

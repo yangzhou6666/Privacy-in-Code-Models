@@ -255,13 +255,21 @@ def main():
     
     # data prepare
     data_path = os.path.join(args.data_dir,args.lang,args.surrogate_model,args.sample_ratio)
+    # The path will be like: ../dataset/java/gpt2/20
+    
+    # Generate the train and test data.
     if not os.path.exists(os.path.join(data_path,'train.json')) or not os.path.exists(os.path.join(data_path,'test.json')):
+        # 如果不存在的话，就读取上一步生成的数据
         classifier_train, classifier_test = prepare_data(args)
         divide_data(args,classifier_train,classifier_test)
+        # divide_data这个函数会写入train和val.json这两个文件
+        # 这里写入的数据，是surrogate model的输出，来训练classifier的
+
     # 其中train.json和dev.json是用于训练和测试的classifier的数据，test.json是用于验证真实世界情况的数据
     train_dataset = ClassificationDataset(args,file_type='train',tokenizer=tokenizer)
     val_dataset = ClassificationDataset(args,file_type='val',tokenizer=tokenizer)
-    # test_dataset = ClassificationDataset(args,file_type='test',tokenizer=tokenizer)
+    # test_dataset = ClassificationDataset(args,file_type='test',tokenizer=tokenizer) # test这一步并没有用到
+    
 
     batch_size = args.batch_size * args.gradient_accumulation_steps
     train_dataloader = DataLoader(train_dataset,batch_size=batch_size,shuffle=True,collate_fn=ClassificationDataset_collate_fn)
