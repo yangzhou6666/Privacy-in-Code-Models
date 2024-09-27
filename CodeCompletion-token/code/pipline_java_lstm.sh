@@ -10,7 +10,7 @@ export CUDA_VISIBLE_DEVICES=3 #specify GPU, change every time
 
 for SAMPLE_RATIO in {10..20..10}
 do
-LOGFILE="completion_javaCorpus_lstm_${SAMPLE_RATIO}".log
+LOGFILE="logs/LSTM_${SAMPLE_RATIO}".log
 DATADIR="../dataset/javaCorpus/token_completion/"
 OUTPUTDIR="../save/javaCorpus/"
 echo $LOGFILE

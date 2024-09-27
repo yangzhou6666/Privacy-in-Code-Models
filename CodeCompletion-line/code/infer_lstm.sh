@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=1 # modify
+export CUDA_VISIBLE_DEVICES=2 # modify
 MODEL=rnn 
 MASTER_PORT=77777 # modify
 MODE=surrogate 
@@ -29,5 +29,5 @@ python -u run.py \
         --seed=42 \
         --MASTER_PORT $MASTER_PORT \
         --per_gpu_eval_batch_size 128 \
-        --mode $MODE 
+        --mode $MODE &
 done

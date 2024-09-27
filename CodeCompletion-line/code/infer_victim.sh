@@ -1,5 +1,10 @@
 export CUDA_VISIBLE_DEVICES=2  # modify
-MODEL=microsoft/CodeGPT-small-java-adaptedGPT2 
+# MODEL=microsoft/CodeGPT-small-java-adaptedGPT2 
+# MODEL=codeparrot/codeparrot-small
+# MODEL=NinedayWang/PolyCoder-0.4B 
+# MODEL=Salesforce/codegen-350M-multi
+# MODEL=bigcode/santacoder
+MODEL=bigcode/starcoderbase-1b
 MASTER_PORT=92257
 MODE=victim 
 Percentage=0.01 
@@ -7,13 +12,13 @@ Percentage=0.01
 LANG=java                      
 
 
-for SAMPLE_RATIO in {10..20..10}
+for SAMPLE_RATIO in {10..10..10}
 do
 
 DATADIR="../dataset/javaCorpus/${Percentage}/${SAMPLE_RATIO}/"
 LITFILE=../dataset/javaCorpus/literals.json
-PRETRAINDIR="../../CodeCompletion-token/save/javaCorpus/${MODEL}/100/checkpoint-epoch-4"
-LOGFILE="completion_javaCorpus_${MODEL##*/}_${MODE}_eval.log"
+PRETRAINDIR="../../CodeCompletion-token/save/javaCorpus/${MODEL}/100/checkpoint-epoch-3"
+LOGFILE="logs/${MODEL##*/}_${MODE}_eval.log"
 
 python -u run.py \
         --data_dir=$DATADIR \
@@ -22,12 +27,12 @@ python -u run.py \
         --output_dir=$DATADIR \
         --pretrain_dir=$PRETRAINDIR \
         --log_file=$LOGFILE \
-        --model_type=gpt2 \
+        --model_type=polycoder \
         --block_size=1024 \
         --eval_line \
         --logging_steps=100 \
         --seed=42 \
         --MASTER_PORT $MASTER_PORT \
         --per_gpu_eval_batch_size 128 \
-        --mode $MODE 
-done
+        --mode $MODE
+done 

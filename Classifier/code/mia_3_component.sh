@@ -4,12 +4,10 @@ Percentage=0.01
 
 for SAMPLE_RATIO in {10..20..10}
 do
-for EPOCH in 0
-do
 
 
 LANG=java    
-CLASSIFIER_SAVE_DICT=../classifier_save/PTM3/javaCorpus/${VICTIM_MODEL##*/}/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/${SEED}/
+CLASSIFIER_SAVE_DICT=../classifier_save/PTM3/javaCorpus/${SURROGATE_MODEL##*/}/${SAMPLE_RATIO}/${SEED}/
 PREDICTION_DATA_FOLDER_PATH=../../CodeCompletion-line/dataset/javaCorpus/${Percentage}/${SAMPLE_RATIO}/
 LITFILE=../dataset/javaCorpus/literals.json
 
@@ -30,6 +28,7 @@ python mia.py \
     --mode victim \
     --use_tree_component \
     --seed ${SEED} \
+    --epoch ${EPOCH} \
     # --save_results
     
 
@@ -50,6 +49,6 @@ python mia.py \
 #     --prefix_path ../dataset/java/${SURROGATE_MODEL}/${SAMPLE_RATIO} \
 #     --victim_model ${VICTIM_MODEL} \
 #     --mode victim_${EPOCH}
-done
+# done
 done
 

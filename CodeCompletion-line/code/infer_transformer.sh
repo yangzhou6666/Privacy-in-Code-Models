@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=1 # modify
+export CUDA_VISIBLE_DEVICES=3 # modify
 MODEL=transformer 
 MASTER_PORT=77777 # modify
 MODE=surrogate 
@@ -13,7 +13,7 @@ do
 DATADIR="../dataset/javaCorpus/${Percentage}/${SAMPLE_RATIO}/"
 LITFILE=../dataset/javaCorpus/literals.json
 PRETRAINDIR="../../CodeCompletion-token/save/javaCorpus/${MODEL}/${SAMPLE_RATIO}/checkpoint-epoch-4"
-LOGFILE="completion_javaCorpus_${MODEL##*/}_${MODE}_eval.log"
+LOGFILE="logs/${MODEL##*/}_${MODE}_eval.log"
 
 python -u run.py \
         --data_dir=$DATADIR \
@@ -29,5 +29,5 @@ python -u run.py \
         --seed=42 \
         --MASTER_PORT $MASTER_PORT \
         --per_gpu_eval_batch_size 128 \
-        --mode $MODE 
+        --mode $MODE &
 done

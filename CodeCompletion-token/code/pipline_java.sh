@@ -1,12 +1,12 @@
 LANG=java 
 
 LITFILE=../dataset/javaCorpus/literals.json
-OUTPUTDIR=../save/javaCorpus
+OUTPUTDIR=../save/javaCorpus # save model to this directory
 PRETRAINDIR=gpt2  # [microsoft/CodeGPT-small-java,microsoft/CodeGPT-small-java-adaptedGPT2,gpt2]
 PER_NODE_GPU=1       
 
 MASTER_PORT=90927 #change every time
-export CUDA_VISIBLE_DEVICES=1 #specify GPU, change every time
+export CUDA_VISIBLE_DEVICES=3 #specify GPU, change every time
 
 
 for SAMPLE_RATIO in {10..20..10}
@@ -38,7 +38,7 @@ python -u run_lm.py \
         --not_pretrain \
         --sample_ratio $SAMPLE_RATIO \
         --save_sample \
-        --MASTER_PORT $MASTER_PORT
+        --MASTER_PORT $MASTER_PORT &
 
 
 done

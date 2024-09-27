@@ -1,14 +1,14 @@
 LANG=java                       
 LITFILE=../dataset/javaCorpus/literals.json
-PRETRAINDIR=gpt2  
+PRETRAINDIR=transformer  
 PER_NODE_GPU=1       
 
 MASTER_PORT=55551 ##change every time
-export CUDA_VISIBLE_DEVICES=0 #specify GPU, change every time
+export CUDA_VISIBLE_DEVICES=2 #specify GPU, change every time
 
 for SAMPLE_RATIO in {10..20..10}
 do
-LOGFILE="completion_javaCorpus_tokenizer_transformers_${SAMPLE_RATIO}".log
+LOGFILE="logs/transformers_${SAMPLE_RATIO}".log
 DATADIR="../dataset/javaCorpus/token_completion/"
 OUTPUTDIR="../save/javaCorpus/"
 echo $LOGFILE
@@ -37,6 +37,6 @@ python -u run_lm.py \
         --not_pretrain \
         --sample_ratio $SAMPLE_RATIO \
         --save_sample \
-        --MASTER_PORT $MASTER_PORT
+        --MASTER_PORT $MASTER_PORT &
 
 done
